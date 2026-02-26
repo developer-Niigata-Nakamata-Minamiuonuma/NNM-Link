@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NNM Call</title>
 
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
 <!-- Firebase SDK（簡単版） -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -65,6 +67,7 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
 const auth = firebase.auth();
 
 const loginBtn = document.getElementById("loginBtn");
@@ -81,10 +84,21 @@ logoutBtn.onclick = () => {
 };
 
 auth.onAuthStateChanged(user => {
+  auth.onAuthStateChanged(user => {
   if(user){
+
     userStatus.textContent = "ログイン中: " + user.displayName;
     loginBtn.style.display = "none";
     logoutBtn.style.display = "inline-block";
+
+    // 🔥 Firestoreに保存
+    db.collection("users").doc(user.uid).set({
+      name: user.displayName,
+      email: user.email,
+      online: true,
+      lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
   } else {
     userStatus.textContent = "ログインしていません";
     loginBtn.style.display = "inline-block";
