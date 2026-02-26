@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NNM Call</title>
+
+<!-- Firebase SDK（簡単版） -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+
+<style>
+body{
+  font-family:sans-serif;
+  background:#f5f5f5;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+  margin:0;
+}
+.card{
+  background:white;
+  padding:30px;
+  border-radius:15px;
+  text-align:center;
+  width:300px;
+  box-shadow:0 5px 20px rgba(0,0,0,0.1);
+}
+h2{
+  margin-top:0;
+}
+button{
+  padding:10px 20px;
+  border:none;
+  border-radius:8px;
+  background:#bf0000;
+  color:white;
+  font-size:16px;
+  cursor:pointer;
+  margin-top:10px;
+}
+button:hover{
+  opacity:0.9;
+}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h2>NNM Call</h2>
+  <p id="userStatus">ログインしていません</p>
+  <button id="loginBtn">NNMログイン</button>
+  <button id="logoutBtn" style="display:none;">ログアウト</button>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBQwXHLxaUyX3lGM2Dklc-FLauDT6Kl7Aw",
+  authDomain: "nnm-link.firebaseapp.com",
+  projectId: "nnm-link",
+  storageBucket: "nnm-link.firebasestorage.app",
+  messagingSenderId: "209879246105",
+  appId: "1:209879246105:web:b161ea7d4ea187b5539188"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+
+const loginBtn = document.getElementById("loginBtn");
+const logoutBtn = document.getElementById("logoutBtn");
+const userStatus = document.getElementById("userStatus");
+
+loginBtn.onclick = () => {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider);
+};
+
+logoutBtn.onclick = () => {
+  auth.signOut();
+};
+
+auth.onAuthStateChanged(user => {
+  if(user){
+    userStatus.textContent = "ログイン中: " + user.displayName;
+    loginBtn.style.display = "none";
+    logoutBtn.style.display = "inline-block";
+  } else {
+    userStatus.textContent = "ログインしていません";
+    loginBtn.style.display = "inline-block";
+    logoutBtn.style.display = "none";
+  }
+});
+</script>
+
+</body>
+</html>
