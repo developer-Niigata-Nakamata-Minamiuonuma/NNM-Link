@@ -112,6 +112,38 @@ auth.onAuthStateChanged(user => {
     logoutBtn.style.display = "none";
   }
 });
+
+  // 🔥 ユーザー一覧表示
+const userListDiv = document.createElement("div");
+userListDiv.style.marginTop = "20px";
+document.querySelector(".card").appendChild(userListDiv);
+
+db.collection("users").onSnapshot(snapshot => {
+  userListDiv.innerHTML = "<h3>ユーザー一覧</h3>";
+
+  snapshot.forEach(doc => {
+    const data = doc.data();
+
+    // 自分は表示しない
+    if(auth.currentUser && doc.id !== auth.currentUser.uid){
+
+      const userItem = document.createElement("div");
+      userItem.style.marginTop = "10px";
+      userItem.style.padding = "8px";
+      userItem.style.background = "#eee";
+      userItem.style.borderRadius = "8px";
+
+      userItem.innerHTML = `
+        ${data.name}
+        <button onclick="alert('ここに通話処理を入れる')">
+          📞 電話する
+        </button>
+      `;
+
+      userListDiv.appendChild(userItem);
+    }
+  });
+});
 </script>
 
 </body>
