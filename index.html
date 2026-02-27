@@ -3,17 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NNM Voice</title>
-
-<link rel="manifest" href="manifest.json">
+<title>NNM Voice + 連絡帳</title>
 <script src="https://cdn.jsdelivr.net/npm/skyway-js@4.4.0/dist/skyway.min.js"></script>
-
 <style>
 body{
   font-family:sans-serif;
   text-align:center;
   background:#111;
   color:white;
+  padding:10px;
 }
 input,button{
   padding:10px;
@@ -24,24 +22,28 @@ input,button{
 button{
   background:#0a84ff;
   color:white;
+  cursor:pointer;
 }
 #controls{ margin-top:20px; }
 .hidden{ display:none; }
 .popup{
   position:fixed;
-  top:0;
-  left:0;
-  width:100%;
-  height:100%;
+  top:0; left:0;
+  width:100%; height:100%;
   background:rgba(0,0,0,0.8);
-  display:flex;
-  align-items:center;
-  justify-content:center;
+  display:flex; align-items:center; justify-content:center;
+  z-index:100;
 }
 .popup-box{
   background:#222;
   padding:20px;
   border-radius:12px;
+}
+#contactList div{
+  margin:8px 0;
+}
+#contactList button{
+  margin-left:10px;
 }
 </style>
 </head>
@@ -50,13 +52,15 @@ button{
 
 <h2>NNM Voice</h2>
 
-<input id="myId" placeholder="自分のID">
-<button onclick="init()">接続</button>
+<div>
+  <input id="myId" placeholder="自分のID">
+  <button onclick="init()">接続</button>
+</div>
 
 <hr>
 
-<input id="targetId" placeholder="相手ID">
-<button onclick="makeCall()">発信</button>
+<h3>連絡帳</h3>
+<div id="contactList"></div>
 
 <div id="controls" class="hidden">
   <button onclick="toggleMute()">ミュート</button>
@@ -81,58 +85,98 @@ let localStream;
 let currentCall;
 let muted = false;
 
-async function init(){
-  const myId = document.getElementById("myId").value;
+// サンプル連絡帳
+const contacts = [
+  { name: "田中 太郎", id: "user_tanaka" },
+  { name: "鈴木 花子", id: "user_suzuki" },
+  { name: "佐藤 次郎", id: "user_sato" }
+];
 
-  peer = new Peer(myId,{ key:API_KEY });
-
-  localStream = await navigator.mediaDevices.getUserMedia({ audio:true });
-
-  peer.on("call", call=>{
-    currentCall = call;
-    document.getElementById("incoming").classList.remove("hidden");
+// 連絡帳レンダリング
+function renderContacts() {
+  const listDiv = document.getElementById("contactList");
+  listDiv.innerHTML = "";
+  contacts.forEach(c => {
+    const div = document.createElement("div");
+    div.innerHTML = `${c.name} <button onclick="callContact('${c.id}')">📞</button>`;
+    listDiv.appendChild(div);
   });
 }
 
-function makeCall(){
-  const targetId = document.getElementById("targetId").value;
+// 初期化
+async function init(){
+  const myId = document.getElementById("myId").value.trim();
+  if(!myId){ alert("自分のIDを入力してください"); return; }
+
+  peer = new Peer(myId,{ key:API_KEY });
+  try{
+    localStream = await navigator.mediaDevices.getUserMedia({ audio:true });
+  }catch(e){
+    alert("マイク取得に失敗: " + e.message);
+    return;
+  }
+
+  peer.on("open", id => {
+    alert("接続成功: " + id);
+  });
+
+  peer.on("call", call => {
+    currentCall = call;
+    document.getElementById("incoming").classList.remove("hidden");
+  });
+
+  renderContacts();
+}
+
+// 連絡帳から発信
+function callContact(targetId){
+  if(!localStream){ alert("まず接続してください"); return; }
   currentCall = peer.call(targetId, localStream);
   setupCall();
 }
 
+// 着信応答
 function answerCall(){
+  if(!currentCall){ alert("着信がありません"); return; }
   currentCall.answer(localStream);
   setupCall();
   document.getElementById("incoming").classList.add("hidden");
 }
 
+// 着信拒否
 function rejectCall(){
+  if(!currentCall){ alert("着信がありません"); return; }
   currentCall.close();
   document.getElementById("incoming").classList.add("hidden");
 }
 
+// 通話準備
 function setupCall(){
   currentCall.on("stream", stream=>{
     document.getElementById("remoteAudio").srcObject = stream;
   });
+  currentCall.on("close", () => {
+    document.getElementById("controls").classList.add("hidden");
+    currentCall = null;
+  });
   document.getElementById("controls").classList.remove("hidden");
 }
 
+// ミュート切替
 function toggleMute(){
+  if(!localStream) return;
   muted = !muted;
   localStream.getAudioTracks()[0].enabled = !muted;
   alert(muted ? "ミュートON" : "ミュートOFF");
 }
 
+// 通話終了
 function endCall(){
-  currentCall.close();
-  document.getElementById("controls").classList.add("hidden");
-}
-</script>
-
-<script>
-if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("sw.js");
+  if(currentCall){
+    currentCall.close();
+    currentCall = null;
+    document.getElementById("controls").classList.add("hidden");
+  }
 }
 </script>
 
