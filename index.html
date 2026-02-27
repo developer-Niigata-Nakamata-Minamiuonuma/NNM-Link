@@ -3,54 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NNM Voice + 連絡帳</title>
+<title>NNM Voice 1対1通話テスト</title>
 <script src="https://cdn.jsdelivr.net/npm/skyway-js@4.4.0/dist/skyway.min.js"></script>
 <style>
-body{
-  font-family:sans-serif;
-  text-align:center;
-  background:#111;
-  color:white;
-  padding:10px;
-}
-input,button{
-  padding:10px;
-  margin:5px;
-  border-radius:8px;
-  border:none;
-}
-button{
-  background:#0a84ff;
-  color:white;
-  cursor:pointer;
-}
+body{ font-family:sans-serif; text-align:center; background:#111; color:white; padding:10px; }
+input,button{ padding:10px; margin:5px; border-radius:8px; border:none; }
+button{ background:#0a84ff; color:white; cursor:pointer; }
 #controls{ margin-top:20px; }
 .hidden{ display:none; }
-.popup{
-  position:fixed;
-  top:0; left:0;
-  width:100%; height:100%;
-  background:rgba(0,0,0,0.8);
-  display:flex; align-items:center; justify-content:center;
-  z-index:100;
-}
-.popup-box{
-  background:#222;
-  padding:20px;
-  border-radius:12px;
-}
-#contactList div{
-  margin:8px 0;
-}
-#contactList button{
-  margin-left:10px;
-}
+.popup{ position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); display:flex; align-items:center; justify-content:center; z-index:100; }
+.popup-box{ background:#222; padding:20px; border-radius:12px; }
+#contactList div{ margin:8px 0; }
+#contactList button{ margin-left:10px; }
 </style>
 </head>
 
 <body>
 
-<h2>NNM Voice</h2>
+<h2>NNM Voice 1対1テスト</h2>
 
 <div>
   <input id="myId" placeholder="自分のID">
@@ -120,8 +90,12 @@ async function init(){
     alert("接続成功: " + id);
   });
 
-  // ここが重要: 着信はpeer.on('call')発火時のみ
+  // 着信時のみポップアップ表示
   peer.on("call", call => {
+    if(currentCall){ 
+      call.close(); // 他の通話は拒否
+      return;
+    }
     currentCall = call;
     document.getElementById("incoming").classList.remove("hidden");
   });
@@ -132,6 +106,10 @@ async function init(){
 // 連絡帳から発信
 function callContact(targetId){
   if(!localStream){ alert("まず接続してください"); return; }
+  if(currentCall){
+    alert("すでに通話中です");
+    return;
+  }
   currentCall = peer.call(targetId, localStream);
   setupCall();
 }
