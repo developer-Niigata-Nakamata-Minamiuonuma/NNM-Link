@@ -85,14 +85,14 @@ let localStream;
 let currentCall;
 let muted = false;
 
-// サンプル連絡帳
+// 固定IDの連絡帳
 const contacts = [
   { name: "田中 太郎", id: "user_tanaka" },
   { name: "鈴木 花子", id: "user_suzuki" },
   { name: "佐藤 次郎", id: "user_sato" }
 ];
 
-// 連絡帳レンダリング
+// 連絡帳表示
 function renderContacts() {
   const listDiv = document.getElementById("contactList");
   listDiv.innerHTML = "";
@@ -120,6 +120,7 @@ async function init(){
     alert("接続成功: " + id);
   });
 
+  // ここが重要: 着信はpeer.on('call')発火時のみ
   peer.on("call", call => {
     currentCall = call;
     document.getElementById("incoming").classList.remove("hidden");
@@ -137,7 +138,11 @@ function callContact(targetId){
 
 // 着信応答
 function answerCall(){
-  if(!currentCall){ alert("着信がありません"); return; }
+  if(!currentCall){ 
+    alert("着信がありません"); 
+    document.getElementById("incoming").classList.add("hidden");
+    return;
+  }
   currentCall.answer(localStream);
   setupCall();
   document.getElementById("incoming").classList.add("hidden");
@@ -145,12 +150,17 @@ function answerCall(){
 
 // 着信拒否
 function rejectCall(){
-  if(!currentCall){ alert("着信がありません"); return; }
+  if(!currentCall){ 
+    alert("着信がありません"); 
+    document.getElementById("incoming").classList.add("hidden");
+    return;
+  }
   currentCall.close();
+  currentCall = null;
   document.getElementById("incoming").classList.add("hidden");
 }
 
-// 通話準備
+// 通話セットアップ
 function setupCall(){
   currentCall.on("stream", stream=>{
     document.getElementById("remoteAudio").srcObject = stream;
