@@ -1,150 +1,181 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NNM Call</title>
+<title>NNM LINK</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
 
-<!-- Firebase SDK（簡単版） -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<link rel="manifest" href="manifest.json">
 
 <style>
 body{
+  margin:0;
   font-family:sans-serif;
-  background:#f5f5f5;
-  display:flex;
+  background:#e6f4ea;
+  text-align:center;
+}
+
+.screen{
+  display:none;
+  height:100vh;
   justify-content:center;
   align-items:center;
-  height:100vh;
-  margin:0;
+  flex-direction:column;
 }
-.card{
-  background:white;
-  padding:30px;
-  border-radius:15px;
-  text-align:center;
-  width:320px;
-  box-shadow:0 5px 20px rgba(0,0,0,0.1);
+
+.active{
+  display:flex;
 }
-h2{ margin-top:0; }
-button{
-  padding:10px 20px;
+
+.btn{
+  width:90px;
+  height:90px;
+  border-radius:50%;
   border:none;
-  border-radius:8px;
-  background:#bf0000;
+  font-size:28px;
+  margin:20px;
   color:white;
-  font-size:16px;
-  cursor:pointer;
-  margin-top:10px;
 }
-button:hover{ opacity:0.9; }
-.user{
-  font-size:14px;
-  margin-top:15px;
-  color:#333;
+
+.accept{ background:#00c853; }
+.reject{ background:#d50000; }
+.end{ background:#d50000; }
+.call{ background:#00c853; }
+
+input{
+  padding:10px;
+  font-size:18px;
 }
 </style>
 </head>
+
 <body>
 
-<div class="card">
-  <h2>NNM Call</h2>
-  <p id="userStatus">ログインしていません</p>
-  <button id="loginBtn">NNMログイン</button>
-  <button id="logoutBtn" style="display:none;">ログアウト</button>
-  <div class="user" id="uidBox"></div>
+<!-- ログイン -->
+<div id="loginScreen" class="screen active">
+  <h2>NNM LINK</h2>
+  <button onclick="login()">Googleでログイン</button>
 </div>
 
-<script>
+<!-- メイン -->
+<div id="mainScreen" class="screen">
+  <h2 id="userName"></h2>
+  <input id="targetUid" placeholder="相手UID">
+  <button class="btn call" onclick="startCall()">📞</button>
+</div>
+
+<!-- 着信 -->
+<div id="incomingScreen" class="screen">
+  <h2>着信中</h2>
+  <button class="btn accept" onclick="answerCall()">📞</button>
+  <button class="btn reject" onclick="endCall()">❌</button>
+</div>
+
+<!-- 通話中 -->
+<div id="callScreen" class="screen">
+  <h2>通話中</h2>
+  <button class="btn end" onclick="endCall()">📞</button>
+</div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged }
+from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, addDoc, updateDoc, deleteDoc }
+from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
+
 const firebaseConfig = {
-  apiKey: "AIzaSyBQwXHLxaUyX3lGM2Dklc-FLauDT6Kl7Aw",
-  authDomain: "nnm-link.firebaseapp.com",
-  projectId: "nnm-link",
-  storageBucket: "nnm-link.firebasestorage.app",
-  messagingSenderId: "209879246105",
-  appId: "1:209879246105:web:b161ea7d4ea187b5539188"
+  apiKey: "あなたの",
+  authDomain: "あなたの",
+  projectId: "あなたの",
+  storageBucket: "あなたの",
+  messagingSenderId: "あなたの",
+  appId: "あなたの"
 };
 
-firebase.initializeApp(firebaseConfig);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth();
+const db = getFirestore();
 
-const auth = firebase.auth();
-const db = firebase.firestore();
+let currentUser;
+let pc;
+let localStream;
+let currentCallDoc;
 
-const loginBtn = document.getElementById("loginBtn");
-const logoutBtn = document.getElementById("logoutBtn");
-const userStatus = document.getElementById("userStatus");
-const uidBox = document.getElementById("uidBox");
+function show(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
 
-loginBtn.onclick = () => {
-  const provider = new firebase.auth.GoogleAuthProvider();
-  auth.signInWithPopup(provider);
-};
+window.login = async function(){
+  const provider = new GoogleAuthProvider();
+  await signInWithPopup(auth, provider);
+}
 
-logoutBtn.onclick = () => {
-  auth.signOut();
-};
-
-auth.onAuthStateChanged(user => {
+onAuthStateChanged(auth,user=>{
   if(user){
-
-    userStatus.textContent = "ログイン中: " + user.displayName;
-    uidBox.textContent = "UID: " + user.uid;
-
-    loginBtn.style.display = "none";
-    logoutBtn.style.display = "inline-block";
-
-    // 🔥 Firestoreにユーザー保存
-    db.collection("users").doc(user.uid).set({
-      name: user.displayName,
-      email: user.email,
-      online: true,
-      lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-  } else {
-
-    userStatus.textContent = "ログインしていません";
-    uidBox.textContent = "";
-
-    loginBtn.style.display = "inline-block";
-    logoutBtn.style.display = "none";
+    currentUser = user;
+    document.getElementById("userName").innerText = user.displayName;
+    show("mainScreen");
+    listenIncoming();
   }
 });
 
-  // 🔥 ユーザー一覧表示
-const userListDiv = document.createElement("div");
-userListDiv.style.marginTop = "20px";
-document.querySelector(".card").appendChild(userListDiv);
-
-db.collection("users").onSnapshot(snapshot => {
-  userListDiv.innerHTML = "<h3>ユーザー一覧</h3>";
-
-  snapshot.forEach(doc => {
-    const data = doc.data();
-
-    // 自分は表示しない
-    if(auth.currentUser && doc.id !== auth.currentUser.uid){
-
-      const userItem = document.createElement("div");
-      userItem.style.marginTop = "10px";
-      userItem.style.padding = "8px";
-      userItem.style.background = "#eee";
-      userItem.style.borderRadius = "8px";
-
-      userItem.innerHTML = `
-        ${data.name}
-        <button onclick="alert('ここに通話処理を入れる')">
-          📞 電話する
-        </button>
-      `;
-
-      userListDiv.appendChild(userItem);
-    }
+async function listenIncoming(){
+  const callsRef = collection(db,"calls");
+  onSnapshot(callsRef,snap=>{
+    snap.forEach(docSnap=>{
+      const data = docSnap.data();
+      if(data.to===currentUser.uid && data.status==="ringing"){
+        currentCallDoc = docSnap;
+        show("incomingScreen");
+      }
+    });
   });
-});
-</script>
+}
 
+window.startCall = async function(){
+  const target = document.getElementById("targetUid").value;
+  currentCallDoc = await addDoc(collection(db,"calls"),{
+    from:currentUser.uid,
+    to:target,
+    status:"ringing"
+  });
+}
+
+window.answerCall = async function(){
+  show("callScreen");
+  await updateDoc(doc(db,"calls",currentCallDoc.id),{
+    status:"accepted"
+  });
+  startWebRTC(true);
+}
+
+window.endCall = async function(){
+  show("mainScreen");
+  if(currentCallDoc){
+    await deleteDoc(doc(db,"calls",currentCallDoc.id));
+  }
+  if(pc) pc.close();
+}
+
+async function startWebRTC(isAnswer){
+  pc = new RTCPeerConnection();
+
+  localStream = await navigator.mediaDevices.getUserMedia({audio:true});
+  localStream.getTracks().forEach(track=>pc.addTrack(track,localStream));
+
+  if(!isAnswer){
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+  }
+}
+
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("service-worker.js");
+}
+
+</script>
 </body>
 </html>
