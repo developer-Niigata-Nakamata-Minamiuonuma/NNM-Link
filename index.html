@@ -1,181 +1,140 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>NNM LINK</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NNM Voice</title>
 
 <link rel="manifest" href="manifest.json">
+<script src="https://cdn.jsdelivr.net/npm/skyway-js@4.4.0/dist/skyway.min.js"></script>
 
 <style>
 body{
-  margin:0;
   font-family:sans-serif;
-  background:#e6f4ea;
   text-align:center;
-}
-
-.screen{
-  display:none;
-  height:100vh;
-  justify-content:center;
-  align-items:center;
-  flex-direction:column;
-}
-
-.active{
-  display:flex;
-}
-
-.btn{
-  width:90px;
-  height:90px;
-  border-radius:50%;
-  border:none;
-  font-size:28px;
-  margin:20px;
+  background:#111;
   color:white;
 }
-
-.accept{ background:#00c853; }
-.reject{ background:#d50000; }
-.end{ background:#d50000; }
-.call{ background:#00c853; }
-
-input{
+input,button{
   padding:10px;
-  font-size:18px;
+  margin:5px;
+  border-radius:8px;
+  border:none;
+}
+button{
+  background:#0a84ff;
+  color:white;
+}
+#controls{ margin-top:20px; }
+.hidden{ display:none; }
+.popup{
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.8);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.popup-box{
+  background:#222;
+  padding:20px;
+  border-radius:12px;
 }
 </style>
 </head>
 
 <body>
 
-<!-- ログイン -->
-<div id="loginScreen" class="screen active">
-  <h2>NNM LINK</h2>
-  <button onclick="login()">Googleでログイン</button>
+<h2>NNM Voice</h2>
+
+<input id="myId" placeholder="自分のID">
+<button onclick="init()">接続</button>
+
+<hr>
+
+<input id="targetId" placeholder="相手ID">
+<button onclick="makeCall()">発信</button>
+
+<div id="controls" class="hidden">
+  <button onclick="toggleMute()">ミュート</button>
+  <button onclick="endCall()">通話終了</button>
 </div>
 
-<!-- メイン -->
-<div id="mainScreen" class="screen">
-  <h2 id="userName"></h2>
-  <input id="targetUid" placeholder="相手UID">
-  <button class="btn call" onclick="startCall()">📞</button>
+<div id="incoming" class="popup hidden">
+  <div class="popup-box">
+    <p>着信中...</p>
+    <button onclick="answerCall()">応答</button>
+    <button onclick="rejectCall()">拒否</button>
+  </div>
 </div>
 
-<!-- 着信 -->
-<div id="incomingScreen" class="screen">
-  <h2>着信中</h2>
-  <button class="btn accept" onclick="answerCall()">📞</button>
-  <button class="btn reject" onclick="endCall()">❌</button>
-</div>
+<audio id="remoteAudio" autoplay></audio>
 
-<!-- 通話中 -->
-<div id="callScreen" class="screen">
-  <h2>通話中</h2>
-  <button class="btn end" onclick="endCall()">📞</button>
-</div>
+<script>
+const API_KEY = "9b4c7b2b-b827-440f-94fb-f4925b77fd21";
 
-<script type="module">
-
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged }
-from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, addDoc, updateDoc, deleteDoc }
-from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "あなたの",
-  authDomain: "あなたの",
-  projectId: "あなたの",
-  storageBucket: "あなたの",
-  messagingSenderId: "あなたの",
-  appId: "あなたの"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth();
-const db = getFirestore();
-
-let currentUser;
-let pc;
+let peer;
 let localStream;
-let currentCallDoc;
+let currentCall;
+let muted = false;
 
-function show(id){
-  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
-  document.getElementById(id).classList.add("active");
-}
+async function init(){
+  const myId = document.getElementById("myId").value;
 
-window.login = async function(){
-  const provider = new GoogleAuthProvider();
-  await signInWithPopup(auth, provider);
-}
+  peer = new Peer(myId,{ key:API_KEY });
 
-onAuthStateChanged(auth,user=>{
-  if(user){
-    currentUser = user;
-    document.getElementById("userName").innerText = user.displayName;
-    show("mainScreen");
-    listenIncoming();
-  }
-});
+  localStream = await navigator.mediaDevices.getUserMedia({ audio:true });
 
-async function listenIncoming(){
-  const callsRef = collection(db,"calls");
-  onSnapshot(callsRef,snap=>{
-    snap.forEach(docSnap=>{
-      const data = docSnap.data();
-      if(data.to===currentUser.uid && data.status==="ringing"){
-        currentCallDoc = docSnap;
-        show("incomingScreen");
-      }
-    });
+  peer.on("call", call=>{
+    currentCall = call;
+    document.getElementById("incoming").classList.remove("hidden");
   });
 }
 
-window.startCall = async function(){
-  const target = document.getElementById("targetUid").value;
-  currentCallDoc = await addDoc(collection(db,"calls"),{
-    from:currentUser.uid,
-    to:target,
-    status:"ringing"
+function makeCall(){
+  const targetId = document.getElementById("targetId").value;
+  currentCall = peer.call(targetId, localStream);
+  setupCall();
+}
+
+function answerCall(){
+  currentCall.answer(localStream);
+  setupCall();
+  document.getElementById("incoming").classList.add("hidden");
+}
+
+function rejectCall(){
+  currentCall.close();
+  document.getElementById("incoming").classList.add("hidden");
+}
+
+function setupCall(){
+  currentCall.on("stream", stream=>{
+    document.getElementById("remoteAudio").srcObject = stream;
   });
+  document.getElementById("controls").classList.remove("hidden");
 }
 
-window.answerCall = async function(){
-  show("callScreen");
-  await updateDoc(doc(db,"calls",currentCallDoc.id),{
-    status:"accepted"
-  });
-  startWebRTC(true);
+function toggleMute(){
+  muted = !muted;
+  localStream.getAudioTracks()[0].enabled = !muted;
+  alert(muted ? "ミュートON" : "ミュートOFF");
 }
 
-window.endCall = async function(){
-  show("mainScreen");
-  if(currentCallDoc){
-    await deleteDoc(doc(db,"calls",currentCallDoc.id));
-  }
-  if(pc) pc.close();
+function endCall(){
+  currentCall.close();
+  document.getElementById("controls").classList.add("hidden");
 }
-
-async function startWebRTC(isAnswer){
-  pc = new RTCPeerConnection();
-
-  localStream = await navigator.mediaDevices.getUserMedia({audio:true});
-  localStream.getTracks().forEach(track=>pc.addTrack(track,localStream));
-
-  if(!isAnswer){
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-  }
-}
-
-if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("service-worker.js");
-}
-
 </script>
+
+<script>
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("sw.js");
+}
+</script>
+
 </body>
 </html>
