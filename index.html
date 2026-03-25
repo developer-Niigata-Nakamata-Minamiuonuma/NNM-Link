@@ -6,66 +6,49 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
     <style>
-        :root { --bg: #ffffff; --text: #1c1c1e; --accent: #34c759; --danger: #ff3b30; --gray: #f2f2f7; --sub: #8e8e93; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; overflow: hidden; }
+        :root { --bg: #ffffff; --text: #1c1c1e; --accent: #34c759; --danger: #ff3b30; --blue: #007aff; --gray: #f2f2f7; --sub: #8e8e93; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; overflow: hidden; text-align: center; }
 
         /* ヘッダー */
-        header { padding: 20px; border-bottom: 1px solid #eee; background: #fff; position: sticky; top: 0; z-index: 10; }
-        .my-num-display { font-size: 12px; color: var(--sub); margin-top: 5px; }
+        header { padding: 20px; border-bottom: 1px solid #eee; background: #fff; text-align: left; }
+        .my-num-display { font-size: 13px; color: var(--sub); margin-top: 4px; }
 
         /* 連絡先リスト */
-        .contact-list { height: calc(100vh - 100px); overflow-y: auto; padding-bottom: 100px; }
-        .contact-item { 
-            display: flex; align-items: center; padding: 15px 20px; border-bottom: 1px solid #f9f9f9;
-            cursor: pointer; transition: background 0.2s;
-        }
-        .contact-item:active { background: var(--gray); }
-        .avatar { 
-            width: 45px; height: 45px; background: #e1e1e6; border-radius: 50%; 
-            display: flex; align-items: center; justify-content: center; color: #fff; font-size: 20px; margin-right: 15px;
-        }
-        .contact-info { text-align: left; flex-grow: 1; }
+        .contact-list { height: calc(100vh - 120px); overflow-y: auto; padding-bottom: 80px; }
+        .contact-item { display: flex; align-items: center; padding: 15px 20px; border-bottom: 1px solid #f2f2f7; cursor: pointer; }
+        .avatar { width: 45px; height: 45px; background: #c7c7cc; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; margin-right: 15px; }
+        .contact-info { flex-grow: 1; text-align: left; }
         .contact-name { font-weight: 500; font-size: 17px; }
-        .contact-number { color: var(--sub); font-size: 13px; }
 
         /* フローティング発信ボタン */
-        .fab {
-            position: fixed; bottom: 30px; right: 30px; 
-            width: 65px; height: 65px; background: #007aff; color: white;
-            border-radius: 18px; display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 8px 20px rgba(0,122,255,0.3); z-index: 100; border: none;
-        }
+        .fab { position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; background: var(--blue); color: white; border-radius: 18px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,122,255,0.3); border: none; z-index: 90; }
 
         /* キーパッドモーダル */
-        #keypad-modal {
-            position: fixed; bottom: -100%; left: 0; width: 100%; height: 80%;
-            background: #fff; border-radius: 30px 30px 0 0; box-shadow: 0 -10px 40px rgba(0,0,0,0.1);
-            transition: bottom 0.4s cubic-bezier(0.4, 0, 0.2, 1); z-index: 200;
-            display: flex; flex-direction: column; align-items: center; padding-top: 20px;
-        }
+        #keypad-modal { position: fixed; bottom: -100%; left: 0; width: 100%; height: 85%; background: #fff; border-radius: 25px 25px 0 0; box-shadow: 0 -5px 20px rgba(0,0,0,0.1); transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); z-index: 100; display: flex; flex-direction: column; align-items: center; padding-top: 15px; }
         #keypad-modal.open { bottom: 0; }
-        .keypad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 20px; }
-        .key { 
-            width: 75px; height: 75px; border-radius: 50%; background: var(--gray);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            font-size: 28px; font-weight: 400; cursor: pointer;
-        }
-        .key:active { background: #e5e5ea; }
-        .key span { font-size: 10px; color: var(--sub); margin-top: -5px; }
+        .keypad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; width: 80%; margin-top: 10px; }
+        .key { width: 70px; height: 70px; border-radius: 50%; background: var(--gray); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 26px; cursor: pointer; }
+        .key span { font-size: 10px; color: var(--sub); margin-top: -2px; }
+        .key:active { background: #d1d1d6; }
 
         /* 通話画面（フルスクリーン） */
-        .full-screen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #fff; display: none; flex-direction: column; align-items: center; justify-content: space-around; z-index: 1000;
-        }
-        .circle-btn { width: 75px; height: 75px; border-radius: 50%; border: none; color: white; display: flex; align-items: center; justify-content: center; font-size: 32px; }
+        .full-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #fff; display: none; flex-direction: column; align-items: center; justify-content: space-around; z-index: 1000; }
+        .caller-info { margin-top: 50px; }
+        .call-status { color: var(--blue); font-size: 16px; margin-bottom: 8px; font-weight: 500; }
+        .timer { font-size: 20px; color: var(--accent); font-family: monospace; margin-top: 10px; display: none; }
+        
+        .controls { display: grid; grid-template-columns: repeat(3, 1fr); width: 80%; gap: 20px; }
+        .icon-btn { display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 12px; }
+        .icon-circle { width: 60px; height: 60px; border-radius: 50%; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; }
+
+        .circle-btn { width: 75px; height: 75px; border-radius: 50%; border: none; color: white; display: flex; align-items: center; justify-content: center; font-size: 32px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
     </style>
 </head>
-<body>
+<body onclick="unlockAudio()">
 
     <header>
-        <div style="font-size: 24px; font-weight: bold;">連絡先</div>
-        <div class="my-num-display">マイ番号: <span id="my-number">準備中...</span></div>
+        <div style="font-size: 26px; font-weight: bold;">連絡先</div>
+        <div class="my-num-display">自分の番号: <span id="my-number" style="color:var(--blue); font-weight:bold;">設定中...</span></div>
     </header>
 
     <div class="contact-list" id="contact-list">
@@ -73,20 +56,19 @@
             <div class="avatar" style="background:#5856d6;">田</div>
             <div class="contact-info">
                 <div class="contact-name">田中 太郎</div>
-                <div class="contact-number">01-1234</div>
+                <div style="font-size:12px;color:gray;">01-1234</div>
             </div>
             <span class="material-symbols-outlined" style="color:var(--accent);">call</span>
         </div>
-        </div>
+    </div>
 
     <button class="fab" onclick="toggleKeypad(true)">
-        <span class="material-symbols-outlined" style="font-size: 35px;">dialpad</span>
+        <span class="material-symbols-outlined" style="font-size: 32px;">dialpad</span>
     </button>
 
     <div id="keypad-modal">
-        <div style="width: 40px; height: 5px; background: #ddd; border-radius: 10px; margin-bottom: 20px;" onclick="toggleKeypad(false)"></div>
-        <div id="dial-display" style="font-size: 35px; height: 50px; margin-bottom: 20px; letter-spacing: 2px;"></div>
-        
+        <div style="width: 40px; height: 4px; background: #ddd; border-radius: 2px; margin-bottom: 10px;" onclick="toggleKeypad(false)"></div>
+        <div id="dial-display" style="font-size: 32px; height: 45px; margin-bottom: 10px; letter-spacing: 2px;"></div>
         <div class="keypad-grid">
             <div class="key" onclick="pressKey('1')">1<span> </span></div>
             <div class="key" onclick="pressKey('2')">2<span>ABC</span></div>
@@ -101,10 +83,8 @@
             <div class="key" onclick="pressKey('0')">0<span>+</span></div>
             <div class="key" onclick="pressKey('#')">#</div>
         </div>
-        
-        <div style="margin-top: 30px; display: flex; align-items: center; gap: 40px;">
-            <span class="material-symbols-outlined" style="visibility:hidden;">backspace</span>
-            <button class="circle-btn" style="background:var(--accent);" onclick="startDialCall()">
+        <div style="margin-top: 25px; display: flex; align-items: center; gap: 45px;">
+            <button class="circle-btn" style="background:var(--accent); width:65px; height:65px;" onclick="startDialCall()">
                 <span class="material-symbols-outlined">call</span>
             </button>
             <span class="material-symbols-outlined" style="color:var(--sub); cursor:pointer;" onclick="pressKey('back')">backspace</span>
@@ -112,19 +92,20 @@
     </div>
 
     <div id="call-overlay" class="full-screen">
-        <div style="margin-top: 60px;">
-            <div id="active-name" style="font-size: 32px;">不明な発信者</div>
-            <div id="active-number" style="color:var(--sub); font-size: 18px; margin-top:5px;">01-0000</div>
-            <div id="timer" style="font-size: 20px; margin-top: 15px; color: var(--accent); display:none;">00:00</div>
+        <div class="caller-info">
+            <div id="active-name" style="font-size: 32px; font-weight: 400;">不明</div>
+            <div id="active-number" style="color:var(--sub); font-size: 18px; margin-top:8px;">01-0000</div>
+            <div id="call-label" class="call-status">発信中...</div>
+            <div id="timer" class="timer">00:00</div>
         </div>
 
-        <div id="in-call-controls" style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 30px; width: 80%;">
-            <div onclick="toggleMute()"><span id="m-ic" class="material-symbols-outlined icon-btn">mic_off</span></div>
-            <div onclick="toggleHold()"><span id="h-ic" class="material-symbols-outlined icon-btn">pause</span></div>
-            <div onclick="toggleSpeaker()"><span id="s-ic" class="material-symbols-outlined icon-btn">volume_up</span></div>
+        <div id="in-call-controls" class="controls">
+            <div class="icon-btn" onclick="toggleMute()"><div class="icon-circle"><span id="m-ic" class="material-symbols-outlined">mic_off</span></div><span>消音</span></div>
+            <div class="icon-btn" onclick="toggleHold()"><div class="icon-circle"><span id="h-ic" class="material-symbols-outlined">pause</span></div><span>保留</span></div>
+            <div class="icon-btn" onclick="toggleSpeaker()"><div class="icon-circle"><span id="s-ic" class="material-symbols-outlined">volume_up</span></div><span>スピーカ</span></div>
         </div>
 
-        <div style="display:flex; gap: 60px; margin-bottom: 80px;" id="call-actions">
+        <div style="display:flex; gap: 60px; margin-bottom: 60px;">
             <button id="btn-decline" class="circle-btn" style="background:var(--danger);" onclick="endCall()">
                 <span class="material-symbols-outlined">call_end</span>
             </button>
@@ -135,8 +116,10 @@
     </div>
 
 <script>
-    let peer, localStream, currentCall, timerInterval;
+    let peer, localStream, currentCall, timerInterval, vibeInterval;
     let dialString = "";
+    let isAudioUnlocked = false;
+
     const ringtone = new Audio("ring.mp3");
     const dialtone = new Audio("dialtone.mp3");
     ringtone.loop = dialtone.loop = true;
@@ -146,56 +129,52 @@
 
     window.onload = async () => {
         document.getElementById('my-number').innerText = myId;
-        localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        initPeer();
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            initPeer();
+        } catch(e) { alert("マイクを許可してください"); }
     };
+
+    function unlockAudio() {
+        if (isAudioUnlocked) return;
+        ringtone.play().then(() => { ringtone.pause(); ringtone.currentTime = 0; });
+        dialtone.play().then(() => { dialtone.pause(); dialtone.currentTime = 0; });
+        isAudioUnlocked = true;
+    }
 
     function initPeer() {
         peer = new Peer(myId, { debug: 1, config: { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] } });
+        
+        peer.on('open', () => { console.log("Peer Ready: " + myId); });
+
+        // 重要：着信イベントのキャッチ
         peer.on('call', call => {
             currentCall = call;
             showCallOverlay(call.peer, "着信中...", true);
-            ringtone.play();
+            ringtone.play().catch(e => console.log("Ringtone blocked"));
+            if (navigator.vibrate) vibeInterval = setInterval(() => navigator.vibrate([1000, 500]), 1500);
         });
     }
 
-    function toggleKeypad(show) {
-        document.getElementById('keypad-modal').classList.toggle('open', show);
-        if(!show) { dialString = ""; updateDialDisplay(); }
-    }
-
-    function pressKey(k) {
-        if(k === 'back') dialString = dialString.slice(0, -1);
-        else if(dialString.length < 10) dialString += k;
-        updateDialDisplay();
-    }
-
-    function updateDialDisplay() {
-        document.getElementById('dial-display').innerText = dialString;
-    }
-
-    function makeCall(number, name = "不明な発信者") {
-        dialtone.play();
+    function makeCall(number, name = "発信中...") {
+        dialtone.play().catch(e => console.log("Dialtone blocked"));
         currentCall = peer.call(number, localStream);
-        showCallOverlay(number, name);
+        showCallOverlay(number, name, false);
         setupCallEvents(currentCall);
     }
 
-    function startDialCall() {
-        if(!dialString) return;
-        makeCall(dialString);
-        toggleKeypad(false);
-    }
-
-    function showCallOverlay(number, name, isIncoming = false) {
+    function showCallOverlay(number, name, isIncoming) {
         document.getElementById('active-number').innerText = number;
         document.getElementById('active-name').innerText = name;
         document.getElementById('call-overlay').style.display = 'flex';
         document.getElementById('btn-answer').style.display = isIncoming ? 'flex' : 'none';
+        document.getElementById('call-label').innerText = isIncoming ? "着信中..." : "発信中...";
+        document.getElementById('call-label').style.display = 'block';
+        document.getElementById('timer').style.display = 'none';
     }
 
     function answerCall() {
-        ringtone.pause();
+        stopSounds();
         currentCall.answer(localStream);
         document.getElementById('btn-answer').style.display = 'none';
         setupCallEvents(currentCall);
@@ -203,23 +182,49 @@
 
     function setupCallEvents(call) {
         call.on('stream', stream => {
-            dialtone.pause();
+            stopSounds();
+            document.getElementById('call-label').style.display = 'none';
             document.getElementById('timer').style.display = 'block';
+            
             const audio = document.createElement('audio');
-            audio.srcObject = stream; audio.autoplay = true;
+            audio.srcObject = stream;
+            audio.autoplay = true;
+            // SH-01L対策: 通常は受話口。スピーカONで1.0にする制御用。
+            audio.volume = 0.7; 
             document.body.appendChild(audio);
             startTimer();
         });
         call.on('close', endCall);
+        call.on('error', endCall);
+    }
+
+    function stopSounds() {
+        ringtone.pause(); ringtone.currentTime = 0;
+        dialtone.pause(); dialtone.currentTime = 0;
+        clearInterval(vibeInterval);
+        if (navigator.vibrate) navigator.vibrate(0);
     }
 
     function endCall() {
-        ringtone.pause(); dialtone.pause();
-        if(currentCall) currentCall.close();
+        stopSounds();
+        if (currentCall) { currentCall.close(); currentCall = null; }
         document.getElementById('call-overlay').style.display = 'none';
         clearInterval(timerInterval);
         document.getElementById('timer').innerText = "00:00";
     }
+
+    // キーパッドロジック
+    function toggleKeypad(show) { 
+        document.getElementById('keypad-modal').classList.toggle('open', show); 
+        if(!show) { dialString = ""; updateDialDisplay(); } 
+    }
+    function pressKey(k) { 
+        if(k === 'back') dialString = dialString.slice(0, -1); 
+        else if(dialString.length < 11) dialString += k; 
+        updateDialDisplay(); 
+    }
+    function updateDialDisplay() { document.getElementById('dial-display').innerText = dialString; }
+    function startDialCall() { if(!dialString) return; makeCall(dialString); toggleKeypad(false); }
 
     function startTimer() {
         let sec = 0;
@@ -229,6 +234,20 @@
             let s = (sec%60).toString().padStart(2,'0');
             document.getElementById('timer').innerText = `${m}:${s}`;
         }, 1000);
+    }
+
+    function toggleMute() {
+        const track = localStream.getAudioTracks()[0];
+        track.enabled = !track.enabled;
+        document.getElementById('m-ic').style.color = track.enabled ? 'black' : 'red';
+    }
+    
+    function toggleHold() { /* 簡易実装: ミュートと同じ挙動 */ toggleMute(); }
+    
+    function toggleSpeaker() {
+        const audio = document.querySelector('audio');
+        if(audio) audio.volume = (audio.volume === 1.0) ? 0.7 : 1.0;
+        document.getElementById('s-ic').style.color = (audio && audio.volume === 1.0) ? 'blue' : 'black';
     }
 </script>
 </body>
