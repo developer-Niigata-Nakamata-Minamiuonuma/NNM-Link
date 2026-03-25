@@ -118,7 +118,7 @@
     let dialString = "";
     let isAudioUnlocked = false;
     let callStartTime = null;
-    let isSpeakerOn = false; // 初期は受話口優先
+    let isSpeakerOn = false; 
 
     const ringtone = new Audio("ring.mp3");
     const dialtone = new Audio("dialtone.mp3");
@@ -131,7 +131,10 @@
         renderContacts();
         renderHistory();
         try {
-            localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            // エコーキャンセル等を有効にして通話モードを促す
+            localStream = await navigator.mediaDevices.getUserMedia({ 
+                audio: { echoCancellation: true, noiseSuppression: true } 
+            });
             initPeer();
         } catch(e) { alert("マイク許可が必要です"); }
     };
@@ -183,16 +186,23 @@
     }
 
     function setupCallEvents(call) {
-        call.on('stream', stream => {
+        call.on('stream', async stream => {
             stopSounds();
             document.getElementById('call-label').innerText = "通話中";
             document.getElementById('timer').style.display = 'block';
-            const audio = document.getElementById('remote-audio') || document.createElement('audio');
-            audio.id = 'remote-audio'; audio.srcObject = stream; audio.autoplay = true;
-            audio.setAttribute('playsinline', '');
-            document.body.appendChild(audio);
             
-            applyAudioOutput(audio); // スピーカー設定適用
+            let audio = document.getElementById('remote-audio');
+            if (!audio) {
+                audio = document.createElement('audio');
+                audio.id = 'remote-audio';
+                document.body.appendChild(audio);
+            }
+            audio.srcObject = stream;
+            audio.autoplay = true;
+            audio.setAttribute('playsinline', ''); 
+            
+            // 出力先の適用
+            setTimeout(() => applyAudioOutput(audio), 500);
             startTimer();
         });
         call.on('close', forceEndCall);
@@ -204,16 +214,35 @@
         const audio = document.getElementById('remote-audio');
         btn.style.background = isSpeakerOn ? "var(--blue)" : "#eee";
         btn.style.color = isSpeakerOn ? "white" : "var(--text)";
-        if (audio) applyAudioOutput(audio);
+        if (audio) await applyAudioOutput(audio);
     }
 
     async function applyAudioOutput(audioElement) {
         if (typeof audioElement.setSinkId !== 'undefined') {
             try {
-                // 空文字列はデフォルト（通常通話時は受話口）を指すことが多い
-                // Android Chrome等ではOS側で「通話」と認識されると受話口優先になります
-                await audioElement.setSinkId(""); 
-            } catch (e) { console.log(e); }
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const audioOutputs = devices.filter(device => device.kind === 'audiooutput');
+
+                if (isSpeakerOn) {
+                    // デフォルトスピーカー
+                    await audioElement.setSinkId(""); 
+                } else {
+                    // 受話口（Earpiece）を名称から探す
+                    const earpiece = audioOutputs.find(d => 
+                        d.label.toLowerCase().includes('earpiece') || 
+                        d.label.toLowerCase().includes('receiver') ||
+                        d.label.toLowerCase().includes('telephony') ||
+                        d.label.toLowerCase().includes('internal')
+                    );
+                    
+                    if (earpiece) {
+                        await audioElement.setSinkId(earpiece.deviceId);
+                    } else {
+                        // 見つからなければ空（システムデフォルト通話先）
+                        await audioElement.setSinkId(""); 
+                    }
+                }
+            } catch (e) { console.error("Audio Routing Error:", e); }
         }
     }
 
@@ -251,7 +280,6 @@
         if (navigator.vibrate) navigator.vibrate(0);
     }
 
-    // --- 連絡先 編集・追加 ---
     function showAddContact(index = -1) {
         const title = document.getElementById('modal-title');
         const btnDel = document.getElementById('btn-delete-con');
@@ -343,7 +371,6 @@
         return c ? c.name : num;
     }
 
-    // --- UI操作 ---
     function switchTab(tab) {
         document.querySelectorAll('.tab, .page-content').forEach(el => el.classList.remove('active'));
         document.querySelector(`.tab[onclick*="${tab}"]`).classList.add('active');
@@ -370,7 +397,6 @@
         document.getElementById('call-overlay').style.display = 'flex';
         document.getElementById('btn-answer').style.display = incoming ? 'flex' : 'none';
         document.getElementById('call-label').innerText = incoming ? "着信中..." : "発信中...";
-        // スピーカー状態のリセット
         isSpeakerOn = false;
         document.getElementById('btn-speaker').style.background = "#eee";
         document.getElementById('btn-speaker').style.color = "var(--text)";
