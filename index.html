@@ -1,172 +1,235 @@
-<!DOCTYPE html>
-<html lang="ja">
+<!DOCTYPE HTML>
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NNM Voice 1対1通話テスト</title>
-<script src="https://cdn.jsdelivr.net/npm/skyway-js@4.4.0/dist/skyway.min.js"></script>
-<style>
-body{ font-family:sans-serif; text-align:center; background:#111; color:white; padding:10px; }
-input,button{ padding:10px; margin:5px; border-radius:8px; border:none; }
-button{ background:#0a84ff; color:white; cursor:pointer; }
-#controls{ margin-top:20px; }
-.hidden{ display:none; }
-.popup{ position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); display:flex; align-items:center; justify-content:center; z-index:100; }
-.popup-box{ background:#222; padding:20px; border-radius:12px; }
-#contactList div{ margin:8px 0; }
-#contactList button{ margin-left:10px; }
-</style>
-</head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
+    <style>
+        :root { --bg-dark: #121212; --accent: #2ecc71; --danger: #e74c3c; --gray: #333; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg-dark); color: white; margin: 0; overflow: hidden; }
+        
+        /* 待機メイン画面 */
+        .main-screen { padding: 60px 20px; text-align: center; display: flex; flex-direction: column; align-items: center; }
+        .my-number-box { background: #1e1e1e; padding: 25px; border-radius: 25px; border: 1px solid #333; margin: 30px 0; width: 80%; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .label { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+        #my-number { font-size: 36px; font-weight: bold; color: var(--accent); letter-spacing: 3px; }
 
+        /* 入力エリア */
+        .input-group { width: 85%; margin-top: 20px; }
+        input[type="text"] { 
+            width: 100%; padding: 18px; border-radius: 15px; border: 1px solid #444; 
+            background: #222; color: white; font-size: 18px; text-align: center; box-sizing: border-box;
+        }
+
+        /* ボタン */
+        .action-btn { 
+            width: 85%; padding: 18px; border-radius: 40px; border: none; font-size: 18px; 
+            font-weight: bold; margin-top: 20px; transition: 0.3s; color: white;
+        }
+        .btn-call { background: var(--accent); cursor: pointer; }
+        .btn-call:disabled { background: #444; color: #888; cursor: not-allowed; }
+
+        /* 着信オーバーレイ（本物の電話のように） */
+        #incoming-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, #1a2a6c, #b21f1f, #fdbb2d); /* 幻想的なグラデーション */
+            display: none; flex-direction: column; align-items: center; justify-content: space-around;
+            z-index: 1000;
+        }
+        .caller-info { text-align: center; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 0.8; } 50% { opacity: 1; } 100% { opacity: 0.8; } }
+        .caller-number { font-size: 42px; display: block; margin-top: 15px; font-weight: bold; }
+        
+        .call-actions { display: flex; width: 100%; justify-content: space-around; padding-bottom: 60px; }
+        .circle-btn {
+            width: 85px; height: 85px; border-radius: 50%; border: none; 
+            color: white; font-size: 35px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+        .answer { background: var(--accent); box-shadow: 0 0 25px rgba(46,204,113,0.6); }
+        .decline { background: var(--danger); box-shadow: 0 0 25px rgba(231,76,60,0.6); }
+
+        /* 通話中画面 */
+        #incall-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; display: none; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 2000;
+        }
+        #active-target-number { font-size: 32px; margin-bottom: 10px; }
+        #call-duration { font-size: 20px; color: var(--accent); font-family: monospace; }
+    </style>
+</head>
 <body>
 
-<h2>NNM Voice 1対1テスト</h2>
+    <div class="main-screen">
+        <h2 style="margin:0; letter-spacing:2px;">NNM PHONE</h2>
+        <div class="my-number-box">
+            <div class="label">Your Phone Number</div>
+            <div id="my-number">Connecting...</div>
+        </div>
+        
+        <div class="input-group">
+            <input type="text" id="target-id" placeholder="相手の番号を入力 (01-xxxx)">
+            <button id="call-btn" class="action-btn btn-call" onclick="makeCall()" disabled>準備中...</button>
+        </div>
+    </div>
 
-<div>
-  <input id="myId" placeholder="自分のID">
-  <button onclick="init()">接続</button>
-</div>
+    <div id="incoming-overlay">
+        <div class="caller-info">
+            <div class="label" style="color:white;">Incoming Call</div>
+            <span class="caller-number" id="incoming-number">01-0000</span>
+        </div>
+        <div class="call-actions">
+            <button class="circle-btn decline" onclick="declineCall()">✕</button>
+            <button class="circle-btn answer" onclick="answerCall()">📞</button>
+        </div>
+    </div>
 
-<hr>
-
-<h3>連絡帳</h3>
-<div id="contactList"></div>
-
-<div id="controls" class="hidden">
-  <button onclick="toggleMute()">ミュート</button>
-  <button onclick="endCall()">通話終了</button>
-</div>
-
-<div id="incoming" class="popup hidden">
-  <div class="popup-box">
-    <p>着信中...</p>
-    <button onclick="answerCall()">応答</button>
-    <button onclick="rejectCall()">拒否</button>
-  </div>
-</div>
-
-<audio id="remoteAudio" autoplay></audio>
+    <div id="incall-screen">
+        <div class="caller-info">
+            <div id="active-target-number">01-0000</div>
+            <div id="call-duration">00:00</div>
+        </div>
+        <button class="circle-btn decline" style="margin-top:80px;" onclick="endCall()">✕</button>
+    </div>
 
 <script>
-const API_KEY = "9b4c7b2b-b827-440f-94fb-f4925b77fd21";
+    let peer = null;
+    let localStream = null;
+    let currentCall = null;
+    let timerInterval = null;
 
-let peer;
-let localStream;
-let currentCall;
-let muted = false;
+    // 自分の番号を管理（保存機能付き）
+    let myPhoneNumber = localStorage.getItem('nnm_phone_num');
 
-// 固定IDの連絡帳
-const contacts = [
-  { name: "田中 太郎", id: "user_tanaka" },
-  { name: "鈴木 花子", id: "user_suzuki" },
-  { name: "佐藤 次郎", id: "user_sato" }
-];
+    window.onload = async () => {
+        if (!myPhoneNumber) {
+            myPhoneNumber = "01-" + Math.floor(Math.random() * 9000 + 1000);
+            localStorage.setItem('nnm_phone_num', myPhoneNumber);
+        }
+        
+        // 先にマイクを確保
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            initPeer();
+        } catch(e) {
+            alert("マイクの使用を許可してください。");
+        }
+    };
 
-// 連絡帳表示
-function renderContacts() {
-  const listDiv = document.getElementById("contactList");
-  listDiv.innerHTML = "";
-  contacts.forEach(c => {
-    const div = document.createElement("div");
-    div.innerHTML = `${c.name} <button onclick="callContact('${c.id}')">📞</button>`;
-    listDiv.appendChild(div);
-  });
-}
+    function initPeer() {
+        const myNumEl = document.getElementById('my-number');
+        const callBtn = document.getElementById('call-btn');
 
-// 初期化
-async function init(){
-  const myId = document.getElementById("myId").value.trim();
-  if(!myId){ alert("自分のIDを入力してください"); return; }
+        // Peerオブジェクト作成
+        peer = new Peer(myPhoneNumber, {
+            debug: 1,
+            config: { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] }
+        });
 
-  peer = new Peer(myId,{ key:API_KEY });
-  try{
-    localStream = await navigator.mediaDevices.getUserMedia({ audio:true });
-  }catch(e){
-    alert("マイク取得に失敗: " + e.message);
-    return;
-  }
+        // サーバーと接続完了したとき
+        peer.on('open', id => {
+            myNumEl.innerText = id;
+            callBtn.disabled = false;
+            callBtn.innerText = "発信";
+        });
 
-  peer.on("open", id => {
-    alert("接続成功: " + id);
-  });
+        // 着信したとき
+        peer.on('call', call => {
+            currentCall = call;
+            showIncomingScreen(call.peer);
+        });
 
-  // 着信時のみポップアップ表示
-  peer.on("call", call => {
-    if(currentCall){ 
-      call.close(); // 他の通話は拒否
-      return;
+        peer.on('error', err => {
+            console.error("PeerJS Error:", err);
+            if(err.type === 'unavailable-id') {
+                alert("この番号は既に使用されています。ページを更新して再生成してください。");
+            }
+        });
     }
-    currentCall = call;
-    document.getElementById("incoming").classList.remove("hidden");
-  });
 
-  renderContacts();
-}
+    // 発信ボタン
+    function makeCall() {
+        if (!peer || !localStream) return;
 
-// 連絡帳から発信
-function callContact(targetId){
-  if(!localStream){ alert("まず接続してください"); return; }
-  if(currentCall){
-    alert("すでに通話中です");
-    return;
-  }
-  currentCall = peer.call(targetId, localStream);
-  setupCall();
-}
+        const target = document.getElementById('target-id').value.trim();
+        if (!target) {
+            alert("相手の番号を入力してください。");
+            return;
+        }
+        
+        currentCall = peer.call(target, localStream);
+        showInCallScreen(target);
+        handleStream(currentCall);
+    }
 
-// 着信応答
-function answerCall(){
-  if(!currentCall){ 
-    alert("着信がありません"); 
-    document.getElementById("incoming").classList.add("hidden");
-    return;
-  }
-  currentCall.answer(localStream);
-  setupCall();
-  document.getElementById("incoming").classList.add("hidden");
-}
+    // 着信画面を出す
+    function showIncomingScreen(number) {
+        document.getElementById('incoming-number').innerText = number;
+        document.getElementById('incoming-overlay').style.display = 'flex';
+    }
 
-// 着信拒否
-function rejectCall(){
-  if(!currentCall){ 
-    alert("着信がありません"); 
-    document.getElementById("incoming").classList.add("hidden");
-    return;
-  }
-  currentCall.close();
-  currentCall = null;
-  document.getElementById("incoming").classList.add("hidden");
-}
+    // 電話に出る
+    function answerCall() {
+        if (!currentCall) return;
+        currentCall.answer(localStream);
+        document.getElementById('incoming-overlay').style.display = 'none';
+        showInCallScreen(currentCall.peer);
+        handleStream(currentCall);
+    }
 
-// 通話セットアップ
-function setupCall(){
-  currentCall.on("stream", stream=>{
-    document.getElementById("remoteAudio").srcObject = stream;
-  });
-  currentCall.on("close", () => {
-    document.getElementById("controls").classList.add("hidden");
-    currentCall = null;
-  });
-  document.getElementById("controls").classList.remove("hidden");
-}
+    // 拒否
+    function declineCall() {
+        if (currentCall) currentCall.close();
+        document.getElementById('incoming-overlay').style.display = 'none';
+    }
 
-// ミュート切替
-function toggleMute(){
-  if(!localStream) return;
-  muted = !muted;
-  localStream.getAudioTracks()[0].enabled = !muted;
-  alert(muted ? "ミュートON" : "ミュートOFF");
-}
+    // 通話中画面
+    function showInCallScreen(number) {
+        document.getElementById('active-target-number').innerText = number;
+        document.getElementById('incall-screen').style.display = 'flex';
+        startTimer();
+    }
 
-// 通話終了
-function endCall(){
-  if(currentCall){
-    currentCall.close();
-    currentCall = null;
-    document.getElementById("controls").classList.add("hidden");
-  }
-}
+    // ストリームの処理（音を出す）
+    function handleStream(call) {
+        call.on('stream', stream => {
+            const audio = document.createElement('audio');
+            audio.srcObject = stream;
+            audio.autoplay = true;
+            document.body.appendChild(audio);
+            
+            // Android 8.1 対策：画面タップで再生再開を保証
+            document.body.addEventListener('click', () => { audio.play(); }, {once: true});
+        });
+        
+        call.on('close', () => { endCall(); });
+        call.on('error', () => { endCall(); });
+    }
+
+    // 通話終了
+    function endCall() {
+        if (currentCall) currentCall.close();
+        stopTimer();
+        document.getElementById('incall-screen').style.display = 'none';
+        document.getElementById('incoming-overlay').style.display = 'none';
+    }
+
+    // 通話時間のタイマー
+    function startTimer() {
+        let sec = 0;
+        const timerEl = document.getElementById('call-duration');
+        timerInterval = setInterval(() => {
+            sec++;
+            let m = Math.floor(sec / 60).toString().padStart(2, '0');
+            let s = (sec % 60).toString().padStart(2, '0');
+            timerEl.innerText = `${m}:${s}`;
+        }, 1000);
+    }
+
+    function stopTimer() {
+        clearInterval(timerInterval);
+        document.getElementById('call-duration').innerText = "00:00";
+    }
 </script>
-
 </body>
 </html>
