@@ -116,139 +116,150 @@
     </div>
 
 <script>
-    let peer, localStream, currentCall, timerInterval, vibeInterval;
-    let dialString = "";
-    let isAudioUnlocked = false;
+   let peer, localStream, currentCall, timerInterval, vibeInterval;
+let dialString = "";
+let isAudioUnlocked = false;
 
-    const ringtone = new Audio("ring.mp3");
-    const dialtone = new Audio("dialtone.mp3");
-    ringtone.loop = dialtone.loop = true;
+const ringtone = new Audio("ring.mp3");
+const dialtone = new Audio("dialtone.mp3");
+ringtone.loop = dialtone.loop = true;
 
-    const myId = localStorage.getItem('nnm_phone_num') || "01-" + Math.floor(Math.random()*9000+1000);
-    localStorage.setItem('nnm_phone_num', myId);
+// 自分の番号（01-XXXX）を取得または生成
+let myId = localStorage.getItem('nnm_phone_num') || "01-" + Math.floor(Math.random()*9000+1000);
+localStorage.setItem('nnm_phone_num', myId);
 
-    window.onload = async () => {
-        document.getElementById('my-number').innerText = myId;
-        try {
-            localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            initPeer();
-        } catch(e) { alert("マイクを許可してください"); }
-    };
-
-    function unlockAudio() {
-        if (isAudioUnlocked) return;
-        ringtone.play().then(() => { ringtone.pause(); ringtone.currentTime = 0; });
-        dialtone.play().then(() => { dialtone.pause(); dialtone.currentTime = 0; });
-        isAudioUnlocked = true;
+window.onload = async () => {
+    document.getElementById('my-number').innerText = myId;
+    try {
+        // 1. まずマイクを確実に取得
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        console.log("Microphone access granted.");
+        // 2. マイクが取れたらPeerを初期化
+        initPeer();
+    } catch(e) { 
+        alert("マイクを許可しないと着信できません。設定を確認してください。"); 
     }
+};
 
-    function initPeer() {
-        peer = new Peer(myId, { debug: 1, config: { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] } });
+function initPeer() {
+    // 既存のPeerがあれば破棄（二重起動防止）
+    if (peer) { peer.destroy(); }
+
+    peer = new Peer(myId, { 
+        debug: 1, 
+        config: { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] } 
+    });
+    
+    // 【重要】サーバーとの接続完了
+    peer.on('open', (id) => { 
+        myId = id;
+        document.getElementById('my-number').innerText = id;
+        document.getElementById('my-number').style.color = "var(--accent)"; // 成功したら緑に
+        console.log("Connected to SkyWay/Peer server as: " + id);
+    });
+
+    // 【重要】着信イベント（ここが動かないと着信しない）
+    peer.on('call', call => {
+        console.log("Incoming call from: " + call.peer);
+        currentCall = call;
         
-        peer.on('open', () => { console.log("Peer Ready: " + myId); });
+        // 着信画面を表示
+        showCallOverlay(call.peer, "着信中...", true);
+        
+        // 音と振動を開始
+        ringtone.play().catch(e => console.log("Unlock required for audio"));
+        if (navigator.vibrate) {
+            vibeInterval = setInterval(() => navigator.vibrate([1000, 500]), 1500);
+        }
+    });
 
-        // 重要：着信イベントのキャッチ
-        peer.on('call', call => {
-            currentCall = call;
-            showCallOverlay(call.peer, "着信中...", true);
-            ringtone.play().catch(e => console.log("Ringtone blocked"));
-            if (navigator.vibrate) vibeInterval = setInterval(() => navigator.vibrate([1000, 500]), 1500);
-        });
-    }
+    // エラーハンドリング（ID重複などの対策）
+    peer.on('error', err => {
+        console.error("PeerJS Error:", err.type);
+        if (err.type === 'unavailable-id') {
+            // IDが使われていたら少し変えて再試行
+            myId = "01-" + Math.floor(Math.random()*9000+1000);
+            localStorage.setItem('nnm_phone_num', myId);
+            setTimeout(initPeer, 1000);
+        }
+    });
 
-    function makeCall(number, name = "発信中...") {
-        dialtone.play().catch(e => console.log("Dialtone blocked"));
-        currentCall = peer.call(number, localStream);
-        showCallOverlay(number, name, false);
-        setupCallEvents(currentCall);
-    }
+    // 切断された時の自動再接続
+    peer.on('disconnected', () => {
+        console.log("Connection lost. Reconnecting...");
+        peer.reconnect();
+    });
+}
 
-    function showCallOverlay(number, name, isIncoming) {
-        document.getElementById('active-number').innerText = number;
-        document.getElementById('active-name').innerText = name;
-        document.getElementById('call-overlay').style.display = 'flex';
-        document.getElementById('btn-answer').style.display = isIncoming ? 'flex' : 'none';
-        document.getElementById('call-label').innerText = isIncoming ? "着信中..." : "発信中...";
-        document.getElementById('call-label').style.display = 'block';
-        document.getElementById('timer').style.display = 'none';
-    }
+// 初回タップで音を出すための「儀式」
+function unlockAudio() {
+    if (isAudioUnlocked) return;
+    ringtone.play().then(() => { ringtone.pause(); ringtone.currentTime = 0; });
+    dialtone.play().then(() => { dialtone.pause(); dialtone.currentTime = 0; });
+    isAudioUnlocked = true;
+    console.log("Audio Unlocked for SH-01L");
+}
 
-    function answerCall() {
-        stopSounds();
+/* --- 以下、発信・終了・タイマーなどの関数は以前と同じ --- */
+function makeCall(number, name = "発信中...") {
+    if (!peer || peer.disconnected) { alert("ネットワークに接続されていません"); return; }
+    dialtone.play().catch(e => console.log("Unlock required"));
+    currentCall = peer.call(number, localStream);
+    showCallOverlay(number, name, false);
+    setupCallEvents(currentCall);
+}
+
+function answerCall() {
+    stopSounds();
+    if (currentCall) {
         currentCall.answer(localStream);
         document.getElementById('btn-answer').style.display = 'none';
         setupCallEvents(currentCall);
     }
+}
 
-    function setupCallEvents(call) {
-        call.on('stream', stream => {
-            stopSounds();
-            document.getElementById('call-label').style.display = 'none';
-            document.getElementById('timer').style.display = 'block';
-            
-            const audio = document.createElement('audio');
-            audio.srcObject = stream;
-            audio.autoplay = true;
-            // SH-01L対策: 通常は受話口。スピーカONで1.0にする制御用。
-            audio.volume = 0.7; 
-            document.body.appendChild(audio);
-            startTimer();
-        });
-        call.on('close', endCall);
-        call.on('error', endCall);
-    }
-
-    function stopSounds() {
-        ringtone.pause(); ringtone.currentTime = 0;
-        dialtone.pause(); dialtone.currentTime = 0;
-        clearInterval(vibeInterval);
-        if (navigator.vibrate) navigator.vibrate(0);
-    }
-
-    function endCall() {
+function setupCallEvents(call) {
+    call.on('stream', stream => {
         stopSounds();
-        if (currentCall) { currentCall.close(); currentCall = null; }
-        document.getElementById('call-overlay').style.display = 'none';
-        clearInterval(timerInterval);
-        document.getElementById('timer').innerText = "00:00";
-    }
+        document.getElementById('call-label').style.display = 'none';
+        document.getElementById('timer').style.display = 'block';
+        const audio = document.createElement('audio');
+        audio.srcObject = stream; audio.autoplay = true;
+        document.body.appendChild(audio);
+        startTimer();
+    });
+    // 相手が切ったら自分も閉じる
+    call.on('close', endCall);
+    call.on('error', endCall);
+}
 
-    // キーパッドロジック
-    function toggleKeypad(show) { 
-        document.getElementById('keypad-modal').classList.toggle('open', show); 
-        if(!show) { dialString = ""; updateDialDisplay(); } 
-    }
-    function pressKey(k) { 
-        if(k === 'back') dialString = dialString.slice(0, -1); 
-        else if(dialString.length < 11) dialString += k; 
-        updateDialDisplay(); 
-    }
-    function updateDialDisplay() { document.getElementById('dial-display').innerText = dialString; }
-    function startDialCall() { if(!dialString) return; makeCall(dialString); toggleKeypad(false); }
+function stopSounds() {
+    ringtone.pause(); ringtone.currentTime = 0;
+    dialtone.pause(); dialtone.currentTime = 0;
+    clearInterval(vibeInterval);
+    if (navigator.vibrate) navigator.vibrate(0);
+}
 
-    function startTimer() {
-        let sec = 0;
-        timerInterval = setInterval(() => {
-            sec++;
-            let m = Math.floor(sec/60).toString().padStart(2,'0');
-            let s = (sec%60).toString().padStart(2,'0');
-            document.getElementById('timer').innerText = `${m}:${s}`;
-        }, 1000);
-    }
+function endCall() {
+    stopSounds();
+    if (currentCall) { currentCall.close(); currentCall = null; }
+    document.getElementById('call-overlay').style.display = 'none';
+    clearInterval(timerInterval);
+    document.getElementById('timer').innerText = "00:00";
+}
 
-    function toggleMute() {
-        const track = localStream.getAudioTracks()[0];
-        track.enabled = !track.enabled;
-        document.getElementById('m-ic').style.color = track.enabled ? 'black' : 'red';
-    }
-    
-    function toggleHold() { /* 簡易実装: ミュートと同じ挙動 */ toggleMute(); }
-    
-    function toggleSpeaker() {
-        const audio = document.querySelector('audio');
-        if(audio) audio.volume = (audio.volume === 1.0) ? 0.7 : 1.0;
-        document.getElementById('s-ic').style.color = (audio && audio.volume === 1.0) ? 'blue' : 'black';
-    }
+function toggleKeypad(show) { document.getElementById('keypad-modal').classList.toggle('open', show); if(!show) { dialString = ""; updateDialDisplay(); } }
+function pressKey(k) { if(k === 'back') dialString = dialString.slice(0, -1); else if(dialString.length < 11) dialString += k; updateDialDisplay(); }
+function updateDialDisplay() { document.getElementById('dial-display').innerText = dialString; }
+function startDialCall() { if(!dialString) return; makeCall(dialString); toggleKeypad(false); }
+function startTimer() { let sec = 0; timerInterval = setInterval(() => { sec++; let m = Math.floor(sec/60).toString().padStart(2,'0'); let s = (sec%60).toString().padStart(2,'0'); document.getElementById('timer').innerText = `${m}:${s}`; }, 1000); }
+function showCallOverlay(number, name, isIncoming) {
+    document.getElementById('active-number').innerText = number;
+    document.getElementById('active-name').innerText = name;
+    document.getElementById('call-overlay').style.display = 'flex';
+    document.getElementById('btn-answer').style.display = isIncoming ? 'flex' : 'none';
+    document.getElementById('call-label').innerText = isIncoming ? "着信中..." : "発信中...";
+}
 </script>
 </body>
 </html>
