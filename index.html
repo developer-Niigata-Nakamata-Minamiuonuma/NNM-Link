@@ -1,4 +1,110 @@
-let peer, localStream, currentCall, timerInterval, vibeInterval;
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
+    <style>
+        :root { --bg: #ffffff; --text: #1c1c1e; --accent: #34c759; --danger: #ff3b30; --blue: #007aff; --gray: #f2f2f7; --sub: #8e8e93; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; overflow: hidden; text-align: center; -webkit-tap-highlight-color: transparent; }
+
+        /* ヘッダー */
+        header { padding: 20px; border-bottom: 1px solid #eee; background: #fff; text-align: left; }
+        .my-num-display { font-size: 13px; color: var(--sub); margin-top: 4px; }
+
+        /* 連絡先リスト（メイン画面） */
+        .contact-list { height: calc(100vh - 120px); overflow-y: auto; padding-bottom: 80px; }
+        .contact-item { display: flex; align-items: center; padding: 15px 20px; border-bottom: 1px solid #f2f2f7; cursor: pointer; }
+        .avatar { width: 45px; height: 45px; background: #c7c7cc; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; margin-right: 15px; }
+        .contact-info { flex-grow: 1; text-align: left; }
+        .contact-name { font-weight: 500; font-size: 17px; }
+
+        /* フローティング発信ボタン */
+        .fab { position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; background: var(--blue); color: white; border-radius: 18px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,122,255,0.3); border: none; z-index: 90; }
+
+        /* キーパッドモーダル */
+        #keypad-modal { position: fixed; bottom: -100%; left: 0; width: 100%; height: 85%; background: #fff; border-radius: 25px 25px 0 0; box-shadow: 0 -5px 20px rgba(0,0,0,0.1); transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); z-index: 100; display: flex; flex-direction: column; align-items: center; padding-top: 15px; }
+        #keypad-modal.open { bottom: 0; }
+        .keypad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; width: 80%; margin-top: 10px; }
+        .key { width: 70px; height: 70px; border-radius: 50%; background: var(--gray); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 26px; cursor: pointer; }
+        .key span { font-size: 10px; color: var(--sub); margin-top: -2px; }
+        .key:active { background: #d1d1d6; }
+
+        /* 通話画面（フルスクリーン） */
+        .full-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #fff; display: none; flex-direction: column; align-items: center; justify-content: space-around; z-index: 1000; }
+        .call-status { color: var(--blue); font-size: 16px; margin-bottom: 8px; font-weight: 500; }
+        .timer { font-size: 22px; color: var(--accent); font-family: monospace; margin-top: 10px; }
+        .circle-btn { width: 75px; height: 75px; border-radius: 50%; border: none; color: white; display: flex; align-items: center; justify-content: center; font-size: 32px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body onclick="unlockAudio()">
+
+    <header>
+        <div style="font-size: 26px; font-weight: bold;">連絡先</div>
+        <div class="my-num-display">自分の番号: <span id="my-number">接続中...</span></div>
+    </header>
+
+    <div class="contact-list">
+        <div class="contact-item" onclick="makeCall('01-1234', '田中 太郎')">
+            <div class="avatar" style="background:#5856d6;">田</div>
+            <div class="contact-info">
+                <div class="contact-name">田中 太郎</div>
+                <div style="font-size:12px;color:gray;">01-1234</div>
+            </div>
+            <span class="material-symbols-outlined" style="color:var(--accent);">call</span>
+        </div>
+    </div>
+
+    <button class="fab" onclick="toggleKeypad(true)">
+        <span class="material-symbols-outlined" style="font-size: 32px;">dialpad</span>
+    </button>
+
+    <div id="keypad-modal">
+        <div style="width: 40px; height: 4px; background: #ddd; border-radius: 2px; margin-bottom: 10px;" onclick="toggleKeypad(false)"></div>
+        <div id="dial-display" style="font-size: 32px; height: 45px; margin-bottom: 10px; letter-spacing: 2px;"></div>
+        <div class="keypad-grid">
+            <div class="key" onclick="pressKey('1')">1<span> </span></div>
+            <div class="key" onclick="pressKey('2')">2<span>ABC</span></div>
+            <div class="key" onclick="pressKey('3')">3<span>DEF</span></div>
+            <div class="key" onclick="pressKey('4')">4<span>GHI</span></div>
+            <div class="key" onclick="pressKey('5')">5<span>JKL</span></div>
+            <div class="key" onclick="pressKey('6')">6<span>MNO</span></div>
+            <div class="key" onclick="pressKey('7')">7<span>PQRS</span></div>
+            <div class="key" onclick="pressKey('8')">8<span>TUV</span></div>
+            <div class="key" onclick="pressKey('9')">9<span>WXYZ</span></div>
+            <div class="key" onclick="pressKey('*')">*</div>
+            <div class="key" onclick="pressKey('0')">0<span>+</span></div>
+            <div class="key" onclick="pressKey('#')">#</div>
+        </div>
+        <div style="margin-top: 25px; display: flex; align-items: center; gap: 45px;">
+            <button class="circle-btn" style="background:var(--accent); width:65px; height:65px;" onclick="startDialCall()">
+                <span class="material-symbols-outlined">call</span>
+            </button>
+            <span class="material-symbols-outlined" style="color:var(--sub); cursor:pointer;" onclick="pressKey('back')">backspace</span>
+        </div>
+    </div>
+
+    <div id="call-overlay" class="full-screen">
+        <div style="margin-top: 50px;">
+            <div id="active-name" style="font-size: 32px; font-weight: 400;">不明</div>
+            <div id="active-number" style="color:var(--sub); font-size: 18px; margin-top:8px;">01-0000</div>
+            <div id="call-label" class="call-status">発信中...</div>
+            <div id="timer" class="timer" style="display:none;">00:00</div>
+        </div>
+
+        <div style="display:flex; gap: 60px; margin-bottom: 60px;">
+            <button id="btn-decline" class="circle-btn" style="background:var(--danger);" onclick="endCall()">
+                <span class="material-symbols-outlined">call_end</span>
+            </button>
+            <button id="btn-answer" class="circle-btn" style="background:var(--accent); display:none;" onclick="answerCall()">
+                <span class="material-symbols-outlined">call</span>
+            </button>
+        </div>
+    </div>
+
+<script>
+  let peer, localStream, currentCall, timerInterval, vibeInterval;
 let dialString = "";
 let isAudioUnlocked = false;
 
@@ -174,3 +280,6 @@ function showCallOverlay(number, name, isIncoming) {
     document.getElementById('btn-answer').style.display = isIncoming ? 'flex' : 'none';
     document.getElementById('call-label').innerText = isIncoming ? "着信中..." : "発信中...";
 }
+</script>
+</body>
+</html>
