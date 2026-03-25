@@ -9,18 +9,15 @@
         :root { --bg: #ffffff; --text: #1c1c1e; --accent: #34c759; --danger: #ff3b30; --blue: #007aff; --gray: #f2f2f7; --sub: #8e8e93; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; overflow: hidden; text-align: center; }
         
-        /* タブ切り替え */
-        .tabs { display: flex; justify-content: space-around; border-bottom: 1px solid #eee; background: #fff; }
-        .tab { padding: 15px; flex-grow: 1; color: var(--sub); cursor: pointer; font-weight: 500; }
+        /* レイアウト */
+        header { padding: 15px 20px; text-align: left; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; }
+        .tabs { display: flex; justify-content: space-around; background: #fff; border-bottom: 1px solid #eee; }
+        .tab { padding: 15px; flex-grow: 1; color: var(--sub); cursor: pointer; font-weight: 500; transition: 0.2s; }
         .tab.active { color: var(--blue); border-bottom: 2px solid var(--blue); }
-
-        .page-content { height: calc(100vh - 110px); overflow-y: auto; display: none; }
+        .page-content { height: calc(100vh - 120px); overflow-y: auto; display: none; }
         .page-content.active { display: block; }
 
-        header { padding: 15px 20px; text-align: left; display: flex; justify-content: space-between; align-items: center; }
-        .my-num-display { font-size: 12px; color: var(--sub); }
-
-        /* リストスタイル */
+        /* リスト */
         .list-item { display: flex; align-items: center; padding: 12px 20px; border-bottom: 1px solid #f2f2f7; cursor: pointer; text-align: left; }
         .avatar { width: 40px; height: 40px; background: #c7c7cc; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; margin-right: 15px; }
         .info { flex-grow: 1; }
@@ -28,19 +25,20 @@
         .sub-text { font-size: 12px; color: var(--sub); }
         .missed { color: var(--danger) !important; }
 
-        /* モーダル共通 */
+        /* モーダル */
         .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 2000; }
-        .modal-body { background: #fff; width: 85%; padding: 25px; border-radius: 20px; text-align: center; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        .modal-body { background: #fff; width: 85%; padding: 25px; border-radius: 20px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        .modal-btns { display: flex; gap: 10px; margin-top: 15px; }
+        .btn-flex { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
 
-        /* 既存のスタイル継承 */
-        .fab { position: fixed; bottom: 20px; right: 20px; width: 56px; height: 56px; background: var(--blue); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.2); border: none; z-index: 90; }
-        #keypad-modal { position: fixed; bottom: -100%; left: 0; width: 100%; height: 85%; background: #fff; border-radius: 25px 25px 0 0; box-shadow: 0 -5px 20px rgba(0,0,0,0.1); transition: 0.4s; z-index: 100; display: flex; flex-direction: column; align-items: center; padding-top: 15px; }
+        /* ボタン・キーパッド */
+        .fab { position: fixed; bottom: 20px; right: 20px; width: 56px; height: 56px; background: var(--blue); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: none; z-index: 90; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        #keypad-modal { position: fixed; bottom: -100%; left: 0; width: 100%; height: 85%; background: #fff; border-radius: 25px 25px 0 0; transition: 0.4s; z-index: 100; display: flex; flex-direction: column; align-items: center; padding-top: 15px; }
         #keypad-modal.open { bottom: 0; }
-        .keypad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; width: 80%; }
-        .key { width: 65px; height: 65px; border-radius: 50%; background: var(--gray); display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; }
+        .keypad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+        .key { width: 65px; height: 65px; border-radius: 50%; background: var(--gray); display: flex; align-items: center; justify-content: center; font-size: 24px; }
         .full-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #fff; display: none; flex-direction: column; align-items: center; justify-content: space-around; z-index: 3000; }
-        .circle-btn { width: 70px; height: 70px; border-radius: 50%; border: none; color: white; display: flex; align-items: center; justify-content: center; font-size: 30px; }
     </style>
 </head>
 <body onclick="unlockAudio()">
@@ -48,48 +46,57 @@
     <header>
         <div>
             <div style="font-size: 22px; font-weight: bold;">NNM PHONE</div>
-            <div class="my-num-display">自分の番号: <span id="my-number">----</span></div>
+            <div style="font-size: 12px; color: var(--sub);">自分の番号: <span id="my-number">----</span></div>
         </div>
-        <button onclick="showAddContact()" style="background:none; border:none; color:var(--blue);"><span class="material-symbols-outlined">person_add</span></button>
+        <button onclick="openContactModal()" style="background:none; border:none; color:var(--blue);"><span class="material-symbols-outlined">person_add</span></button>
     </header>
 
     <div class="tabs">
-        <div class="tab active" onclick="switchTab('contacts')">連絡先</div>
-        <div class="tab" onclick="switchTab('history')">履歴</div>
+        <div class="tab active" id="tab-contacts" onclick="switchTab('contacts')">連絡先</div>
+        <div class="tab" id="tab-history" onclick="switchTab('history')">履歴</div>
     </div>
 
-    <div id="contacts-page" class="page-content active">
-        <div id="contact-list"></div>
-    </div>
-
-    <div id="history-page" class="page-content">
-        <div id="history-list"></div>
-    </div>
+    <div id="contacts-page" class="page-content active"><div id="contact-list"></div></div>
+    <div id="history-page" class="page-content"><div id="history-list"></div></div>
 
     <button class="fab" onclick="toggleKeypad(true)"><span class="material-symbols-outlined">dialpad</span></button>
 
-    <div id="add-modal" class="modal">
+    <div id="contact-modal" class="modal">
         <div class="modal-body">
-            <h3>連絡先を追加</h3>
-            <input type="text" id="new-name" placeholder="名前">
-            <input type="text" id="new-number" placeholder="01-XXXX (ハイフン付)">
-            <div style="display:flex; gap:10px; margin-top:15px;">
-                <button onclick="closeAddContact()" style="flex:1; padding:12px; border:none; background:#eee; border-radius:8px;">キャンセル</button>
-                <button onclick="saveContact()" style="flex:1; padding:12px; border:none; background:var(--blue); color:white; border-radius:8px;">保存</button>
+            <h3 id="modal-title">連絡先を追加</h3>
+            <input type="hidden" id="edit-index">
+            <input type="text" id="con-name" placeholder="名前">
+            <input type="text" id="con-number" placeholder="01-XXXX">
+            <div class="modal-btns">
+                <button class="btn-flex" style="background:#eee;" onclick="closeModal('contact-modal')">戻る</button>
+                <button class="btn-flex" id="btn-delete-con" style="background:var(--danger); color:white; display:none;" onclick="deleteContact()">削除</button>
+                <button class="btn-flex" style="background:var(--blue); color:white;" onclick="saveContact()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="history-modal" class="modal">
+        <div class="modal-body">
+            <h3 id="hist-name">名前</h3>
+            <p id="hist-num" style="color:var(--sub);"></p>
+            <div class="modal-btns">
+                <button class="btn-flex" style="background:#eee;" onclick="closeModal('history-modal')">閉じる</button>
+                <button class="btn-flex" style="background:var(--danger); color:white;" onclick="deleteHistoryItem()">履歴削除</button>
+                <button class="btn-flex" style="background:var(--accent); color:white;" onclick="reCallFromHistory()">かけ直す</button>
             </div>
         </div>
     </div>
 
     <div id="keypad-modal">
-        <div style="width: 40px; height: 4px; background: #ddd; border-radius: 2px; margin-bottom: 10px;" onclick="toggleKeypad(false)"></div>
-        <div id="dial-display" style="font-size: 32px; height: 45px; margin-bottom: 10px;"></div>
+        <div style="width: 40px; height: 4px; background: #ddd; border-radius: 2px; margin-bottom: 20px;" onclick="toggleKeypad(false)"></div>
+        <div id="dial-display" style="font-size: 32px; height: 45px; margin-bottom: 20px;"></div>
         <div class="keypad-grid">
             <div class="key" onclick="pressKey('1')">1</div><div class="key" onclick="pressKey('2')">2</div><div class="key" onclick="pressKey('3')">3</div>
             <div class="key" onclick="pressKey('4')">4</div><div class="key" onclick="pressKey('5')">5</div><div class="key" onclick="pressKey('6')">6</div>
             <div class="key" onclick="pressKey('7')">7</div><div class="key" onclick="pressKey('8')">8</div><div class="key" onclick="pressKey('9')">9</div>
             <div class="key" onclick="pressKey('*')">*</div><div class="key" onclick="pressKey('0')">0</div><div class="key" onclick="pressKey('#')">#</div>
         </div>
-        <button class="circle-btn" style="background:var(--accent); margin-top:20px;" onclick="startDialCall()"><span class="material-symbols-outlined">call</span></button>
+        <button class="circle-btn" style="background:var(--accent); margin-top:30px;" onclick="startDialCall()"><span class="material-symbols-outlined">call</span></button>
     </div>
 
     <div id="call-overlay" class="full-screen">
@@ -109,19 +116,18 @@
     let peer, localStream, currentCall, timerInterval, vibeInterval, ringInterval;
     let dialString = "";
     let isAudioUnlocked = false;
-    let callStartTime = null;
+    let selectedHistoryIdx = -1;
 
-    // --- 音声・番号設定 ---
     const ringtone = new Audio("ring.mp3");
     const dialtone = new Audio("dialtone.mp3");
     dialtone.loop = true;
+
     let myId = localStorage.getItem('nnm_phone_num') || "01-" + Math.floor(Math.random()*9000+1000);
     localStorage.setItem('nnm_phone_num', myId);
 
     window.onload = async () => {
         document.getElementById('my-number').innerText = myId;
-        renderContacts();
-        renderHistory();
+        renderAll();
         try {
             localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
             initPeer();
@@ -135,18 +141,14 @@
         isAudioUnlocked = true;
     }
 
-    // --- PeerJS & 通信ロジック ---
     function initPeer() {
         peer = new Peer(myId, { debug: 1, config: { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] } });
-        peer.on('open', id => { 
-            document.getElementById('my-number').innerText = id;
-            document.getElementById('my-number').style.color = "var(--accent)";
-        });
+        peer.on('open', id => document.getElementById('my-number').innerText = id);
         peer.on('call', call => {
             currentCall = call;
             showCallOverlay(call.peer, getContactName(call.peer), true);
             startRinging();
-            call.on('close', () => forceEndCall('missed')); // 相手がすぐ切ったら不在
+            call.on('close', forceEndCall);
         });
         peer.on('connection', conn => {
             conn.on('data', data => { if (data === 'END_CALL') forceEndCall(); });
@@ -160,113 +162,96 @@
         if (navigator.vibrate) vibeInterval = setInterval(() => navigator.vibrate([1000, 500]), 1500);
     }
 
-    function makeCall(number, name) {
-        dialtone.play();
-        currentCall = peer.call(number, localStream);
-        showCallOverlay(number, name || getContactName(number), false);
-        setupCallEvents(currentCall);
-    }
-
-    function answerCall() {
-        stopSounds();
-        currentCall.answer(localStream);
-        document.getElementById('btn-answer').style.display = 'none';
-        setupCallEvents(currentCall);
-        callStartTime = Date.now(); // 通話開始時間を記録
-    }
-
-    function setupCallEvents(call) {
-        call.on('stream', stream => {
-            stopSounds();
-            document.getElementById('call-label').innerText = "通話中";
-            document.getElementById('timer').style.display = 'block';
-            const audio = document.getElementById('remote-audio') || document.createElement('audio');
-            audio.id = 'remote-audio'; audio.srcObject = stream; audio.autoplay = true;
-            document.body.appendChild(audio);
-            startTimer();
-        });
-        call.on('close', forceEndCall);
-    }
-
-    function requestEndCall() {
-        if (currentCall) {
-            const conn = peer.connect(currentCall.peer);
-            conn.on('open', () => { conn.send('END_CALL'); setTimeout(() => { currentCall.close(); forceEndCall(); }, 100); });
-            currentCall.close();
+    // --- 連絡先ロジック (追加・編集・削除) ---
+    function openContactModal(index = -1) {
+        const modal = document.getElementById('contact-modal');
+        const title = document.getElementById('modal-title');
+        const btnDel = document.getElementById('btn-delete-con');
+        
+        if (index === -1) {
+            title.innerText = "連絡先を追加";
+            document.getElementById('con-name').value = "";
+            document.getElementById('con-number').value = "";
+            document.getElementById('edit-index').value = "-1";
+            btnDel.style.display = "none";
+        } else {
+            let contacts = getContacts();
+            title.innerText = "連絡先を編集";
+            document.getElementById('con-name').value = contacts[index].name;
+            document.getElementById('con-number').value = contacts[index].number;
+            document.getElementById('edit-index').value = index;
+            btnDel.style.display = "block";
         }
-        forceEndCall();
+        modal.style.display = "flex";
     }
 
-    function forceEndCall(typeOverride) {
-        // 履歴の保存
-        if (currentCall) {
-            let type = "";
-            if (document.getElementById('btn-answer').style.display === 'flex') {
-                type = "missed"; // 着信画面で応答前に終了＝不在
-            } else if (callStartTime) {
-                type = document.getElementById('call-label').innerText === "通話中" ? "in" : "out";
-                // 実際は発信か着信かで分ける
-                type = (document.getElementById('call-label').innerText.includes("発信")) ? "out" : "in";
-            } else {
-                type = "out";
-            }
-            saveHistory(currentCall.peer, typeOverride || type);
-        }
-
-        stopSounds();
-        if (currentCall) currentCall.close();
-        const audio = document.getElementById('remote-audio');
-        if (audio) { audio.srcObject = null; audio.remove(); }
-        clearInterval(timerInterval);
-        document.getElementById('call-overlay').style.display = 'none';
-        document.getElementById('timer').style.display = 'none';
-        currentCall = null;
-        callStartTime = null;
-        renderHistory();
-    }
-
-    function stopSounds() {
-        clearInterval(ringInterval); clearInterval(vibeInterval);
-        ringtone.pause(); ringtone.currentTime = 0;
-        dialtone.pause(); dialtone.currentTime = 0;
-        if (navigator.vibrate) navigator.vibrate(0);
-    }
-
-    // --- 連絡先・履歴ロジック ---
     function saveContact() {
-        const name = document.getElementById('new-name').value;
-        const num = document.getElementById('new-number').value;
+        const name = document.getElementById('con-name').value;
+        const num = document.getElementById('con-number').value;
+        const index = parseInt(document.getElementById('edit-index').value);
         if (!name || !num) return;
-        let contacts = JSON.parse(localStorage.getItem('nnm_contacts') || '[]');
-        contacts.push({ name, number: num });
+
+        let contacts = getContacts();
+        if (index === -1) contacts.push({ name, number: num });
+        else contacts[index] = { name, number: num };
+
         localStorage.setItem('nnm_contacts', JSON.stringify(contacts));
-        closeAddContact();
-        renderContacts();
+        closeModal('contact-modal');
+        renderAll();
     }
 
-    function renderContacts() {
-        const list = document.getElementById('contact-list');
-        let contacts = JSON.parse(localStorage.getItem('nnm_contacts') || '[]');
-        list.innerHTML = contacts.map(c => `
-            <div class="list-item" onclick="makeCall('${c.number}', '${c.name}')">
-                <div class="avatar">${c.name[0]}</div>
-                <div class="info"><div class="name">${c.name}</div><div class="sub-text">${c.number}</div></div>
-                <span class="material-symbols-outlined" style="color:var(--accent)">call</span>
+    function deleteContact() {
+        if (!confirm("この連絡先を削除しますか？")) return;
+        const index = parseInt(document.getElementById('edit-index').value);
+        let contacts = getContacts();
+        contacts.splice(index, 1);
+        localStorage.setItem('nnm_contacts', JSON.stringify(contacts));
+        closeModal('contact-modal');
+        renderAll();
+    }
+
+    // --- 履歴ロジック ---
+    function openHistoryModal(index) {
+        selectedHistoryIdx = index;
+        let history = JSON.parse(localStorage.getItem('nnm_history') || '[]');
+        const item = history[index];
+        document.getElementById('hist-name').innerText = item.name;
+        document.getElementById('hist-num').innerText = item.num;
+        document.getElementById('history-modal').style.display = 'flex';
+    }
+
+    function deleteHistoryItem() {
+        let history = JSON.parse(localStorage.getItem('nnm_history') || '[]');
+        history.splice(selectedHistoryIdx, 1);
+        localStorage.setItem('nnm_history', JSON.stringify(history));
+        closeModal('history-modal');
+        renderAll();
+    }
+
+    function reCallFromHistory() {
+        let history = JSON.parse(localStorage.getItem('nnm_history') || '[]');
+        const item = history[selectedHistoryIdx];
+        closeModal('history-modal');
+        makeCall(item.num, item.name);
+    }
+
+    // --- 描画・ユーティリティ ---
+    function renderAll() {
+        const cList = document.getElementById('contact-list');
+        cList.innerHTML = getContacts().map((c, i) => `
+            <div class="list-item">
+                <div class="avatar" onclick="makeCall('${c.number}', '${c.name}')">${c.name[0]}</div>
+                <div class="info" onclick="openContactModal(${i})">
+                    <div class="name">${c.name}</div><div class="sub-text">${c.number}</div>
+                </div>
+                <span class="material-symbols-outlined" style="color:var(--accent)" onclick="makeCall('${c.number}', '${c.name}')">call</span>
             </div>
         `).join('');
-    }
 
-    function saveHistory(num, type) {
+        const hList = document.getElementById('history-list');
         let history = JSON.parse(localStorage.getItem('nnm_history') || '[]');
-        history.unshift({ num, type, time: new Date().toLocaleString(), name: getContactName(num) });
-        localStorage.setItem('nnm_history', JSON.stringify(history.slice(0, 50))); // 最大50件
-    }
-
-    function renderHistory() {
-        const list = document.getElementById('history-list');
-        let history = JSON.parse(localStorage.getItem('nnm_history') || '[]');
-        list.innerHTML = history.map(h => `
-            <div class="list-item" onclick="makeCall('${h.num}', '${h.name}')">
+        hList.innerHTML = history.map((h, i) => `
+            <div class="list-item" onclick="openHistoryModal(${i})">
                 <div class="avatar" style="background:#eee; color:#666"><span class="material-symbols-outlined">${h.type==='out'?'call_made':h.type==='in'?'call_received':'call_missed'}</span></div>
                 <div class="info">
                     <div class="name ${h.type==='missed'?'missed':''}">${h.name}</div>
@@ -276,20 +261,19 @@
         `).join('');
     }
 
+    function getContacts() { return JSON.parse(localStorage.getItem('nnm_contacts') || '[]'); }
     function getContactName(num) {
-        let contacts = JSON.parse(localStorage.getItem('nnm_contacts') || '[]');
-        let c = contacts.find(c => c.number === num);
+        let c = getContacts().find(c => c.number === num);
         return c ? c.name : num;
     }
+    function closeModal(id) { document.getElementById(id).style.display = "none"; }
 
-    // --- UI操作 ---
+    // --- 以下、通話・UI基本ロジック（前回の完成版を継承） ---
     function switchTab(tab) {
         document.querySelectorAll('.tab, .page-content').forEach(el => el.classList.remove('active'));
-        document.querySelector(`.tab[onclick*="${tab}"]`).classList.add('active');
+        document.getElementById(`tab-${tab}`).classList.add('active');
         document.getElementById(`${tab}-page`).classList.add('active');
     }
-    function showAddContact() { document.getElementById('add-modal').style.display = 'flex'; }
-    function closeAddContact() { document.getElementById('add-modal').style.display = 'none'; }
     function toggleKeypad(show) { document.getElementById('keypad-modal').classList.toggle('open', show); if(!show) { dialString = ""; updateDialDisplay(); } }
     function pressKey(k) { if(k==='back') dialString=dialString.slice(0,-1); else if(dialString.length<7) dialString+=k; updateDialDisplay(); }
     function updateDialDisplay() { 
@@ -297,6 +281,43 @@
         document.getElementById('dial-display').innerText = d; 
     }
     function startDialCall() { const t = document.getElementById('dial-display').innerText; if(t.length>3) makeCall(t); toggleKeypad(false); }
+    function makeCall(number, name) {
+        dialtone.play();
+        currentCall = peer.call(number, localStream);
+        showCallOverlay(number, name || getContactName(number), false);
+        setupCallEvents(currentCall);
+    }
+    function answerCall() { stopSounds(); currentCall.answer(localStream); document.getElementById('btn-answer').style.display='none'; setupCallEvents(currentCall); }
+    function setupCallEvents(call) {
+        call.on('stream', stream => {
+            stopSounds(); document.getElementById('call-label').innerText = "通話中"; document.getElementById('timer').style.display = 'block';
+            const audio = document.getElementById('remote-audio') || document.createElement('audio');
+            audio.id = 'remote-audio'; audio.srcObject = stream; audio.autoplay = true; document.body.appendChild(audio);
+            startTimer();
+        });
+        call.on('close', forceEndCall);
+    }
+    function requestEndCall() {
+        if (currentCall) {
+            const conn = peer.connect(currentCall.peer);
+            conn.on('open', () => { conn.send('END_CALL'); setTimeout(() => { currentCall.close(); forceEndCall(); }, 100); });
+            currentCall.close();
+        }
+        forceEndCall();
+    }
+    function forceEndCall() {
+        if (currentCall) saveHistory(currentCall.peer, (document.getElementById('btn-answer').style.display === 'flex' ? 'missed' : (document.getElementById('call-label').innerText.includes("発信") ? 'out' : 'in')));
+        stopSounds(); if (currentCall) currentCall.close();
+        const audio = document.getElementById('remote-audio'); if (audio) { audio.srcObject = null; audio.remove(); }
+        clearInterval(timerInterval); document.getElementById('call-overlay').style.display = 'none';
+        document.getElementById('timer').style.display = 'none'; currentCall = null; renderAll();
+    }
+    function saveHistory(num, type) {
+        let history = JSON.parse(localStorage.getItem('nnm_history') || '[]');
+        history.unshift({ num, type, time: new Date().toLocaleString(), name: getContactName(num) });
+        localStorage.setItem('nnm_history', JSON.stringify(history.slice(0, 50)));
+    }
+    function stopSounds() { clearInterval(ringInterval); clearInterval(vibeInterval); ringtone.pause(); ringtone.currentTime = 0; dialtone.pause(); dialtone.currentTime = 0; if (navigator.vibrate) navigator.vibrate(0); }
     function startTimer() {
         let sec = 0; clearInterval(timerInterval);
         timerInterval = setInterval(() => {
@@ -305,8 +326,7 @@
         }, 1000);
     }
     function showCallOverlay(num, name, incoming) {
-        document.getElementById('active-number').innerText = num;
-        document.getElementById('active-name').innerText = name;
+        document.getElementById('active-number').innerText = num; document.getElementById('active-name').innerText = name;
         document.getElementById('call-overlay').style.display = 'flex';
         document.getElementById('btn-answer').style.display = incoming ? 'flex' : 'none';
         document.getElementById('call-label').innerText = incoming ? "着信中..." : "発信中...";
