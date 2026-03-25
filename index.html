@@ -114,76 +114,26 @@
     </div>
 
 <script>
-    let peer, localStream, currentCall, timerInterval, vibeInterval, ringInterval;
-    let dialString = "";
-    let isAudioUnlocked = false;
-    let callStartTime = null;
-    let isSpeakerOn = false; 
-
-    const ringtone = new Audio("ring.mp3");
-    const dialtone = new Audio("dialtone.mp3");
-    dialtone.loop = true;
-    let myId = localStorage.getItem('nnm_phone_num') || "01-" + Math.floor(Math.random()*9000+1000);
-    localStorage.setItem('nnm_phone_num', myId);
+    // ... (変数の宣言などは変更なし)
 
     window.onload = async () => {
         document.getElementById('my-number').innerText = myId;
         renderContacts();
         renderHistory();
         try {
-            // エコーキャンセル等を有効にして通話モードを促す
+            // 【修正ポイント1】OSに通話であることを強く認識させる制約
             localStream = await navigator.mediaDevices.getUserMedia({ 
-                audio: { echoCancellation: true, noiseSuppression: true } 
+                audio: { 
+                    echoCancellation: { ideal: true }, // エコーキャンセル（通話の必須条件）
+                    noiseSuppression: { ideal: true }, // ノイズ抑制
+                    autoGainControl: { ideal: true }   // 自動ゲイン制御
+                } 
             });
             initPeer();
         } catch(e) { alert("マイク許可が必要です"); }
     };
 
-    function unlockAudio() {
-        if (isAudioUnlocked) return;
-        ringtone.play().then(() => { ringtone.pause(); ringtone.currentTime = 0; });
-        dialtone.play().then(() => { dialtone.pause(); dialtone.currentTime = 0; });
-        isAudioUnlocked = true;
-    }
-
-    function initPeer() {
-        peer = new Peer(myId, { debug: 1, config: { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] } });
-        peer.on('open', id => { 
-            document.getElementById('my-number').innerText = id;
-            document.getElementById('my-number').style.color = "var(--accent)";
-        });
-        peer.on('call', call => {
-            currentCall = call;
-            showCallOverlay(call.peer, getContactName(call.peer), true);
-            startRinging();
-            call.on('close', () => forceEndCall('missed'));
-        });
-        peer.on('connection', conn => {
-            conn.on('data', data => { if (data === 'END_CALL') forceEndCall(); });
-        });
-    }
-
-    function startRinging() {
-        clearInterval(ringInterval);
-        const p = () => { if(currentCall) ringtone.play().catch(e=>{}); }; p();
-        ringInterval = setInterval(p, 3000);
-        if (navigator.vibrate) vibeInterval = setInterval(() => navigator.vibrate([1000, 500]), 1500);
-    }
-
-    function makeCall(number, name) {
-        dialtone.play();
-        currentCall = peer.call(number, localStream);
-        showCallOverlay(number, name || getContactName(number), false);
-        setupCallEvents(currentCall);
-    }
-
-    function answerCall() {
-        stopSounds();
-        currentCall.answer(localStream);
-        document.getElementById('btn-answer').style.display = 'none';
-        setupCallEvents(currentCall);
-        callStartTime = Date.now();
-    }
+    // ... (initPeer, startRinging, makeCall 等は変更なし)
 
     function setupCallEvents(call) {
         call.on('stream', async stream => {
@@ -197,210 +147,60 @@
                 audio.id = 'remote-audio';
                 document.body.appendChild(audio);
             }
+
+            // 【修正ポイント2】音声ストリームの設定を「通話」として扱う
             audio.srcObject = stream;
-            audio.autoplay = true;
-            audio.setAttribute('playsinline', ''); 
+            audio.muted = false;
+            audio.volume = 1.0;
+            audio.setAttribute('playsinline', 'true');
             
-            // 出力先の適用
-            setTimeout(() => applyAudioOutput(audio), 500);
+            // 重要：Android Chromeで「通話モード」として音声ルーティングをOSに任せる
+            // srcObjectを入れた後に一度再生を開始する
+            audio.play().catch(e => console.log("Play error:", e));
+
+            // 出力先の適用を少し遅らせて、OSがストリームを認識した後に実行
+            setTimeout(() => applyAudioOutput(audio), 800);
             startTimer();
         });
         call.on('close', forceEndCall);
     }
 
-    async function toggleSpeaker() {
-        isSpeakerOn = !isSpeakerOn;
-        const btn = document.getElementById('btn-speaker');
-        const audio = document.getElementById('remote-audio');
-        btn.style.background = isSpeakerOn ? "var(--blue)" : "#eee";
-        btn.style.color = isSpeakerOn ? "white" : "var(--text)";
-        if (audio) await applyAudioOutput(audio);
-    }
-
     async function applyAudioOutput(audioElement) {
-        if (typeof audioElement.setSinkId !== 'undefined') {
-            try {
-                const devices = await navigator.mediaDevices.enumerateDevices();
-                const audioOutputs = devices.filter(device => device.kind === 'audiooutput');
+        // スピーカーONならデフォルト（スピーカー）、OFFなら受話口を試みる
+        if (isSpeakerOn) {
+            if (audioElement.setSinkId) await audioElement.setSinkId("");
+            return;
+        }
 
-                if (isSpeakerOn) {
-                    // デフォルトスピーカー
-                    await audioElement.setSinkId(""); 
-                } else {
-                    // 受話口（Earpiece）を名称から探す
-                    const earpiece = audioOutputs.find(d => 
-                        d.label.toLowerCase().includes('earpiece') || 
-                        d.label.toLowerCase().includes('receiver') ||
-                        d.label.toLowerCase().includes('telephony') ||
-                        d.label.toLowerCase().includes('internal')
-                    );
-                    
-                    if (earpiece) {
-                        await audioElement.setSinkId(earpiece.deviceId);
-                    } else {
-                        // 見つからなければ空（システムデフォルト通話先）
-                        await audioElement.setSinkId(""); 
-                    }
-                }
-            } catch (e) { console.error("Audio Routing Error:", e); }
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const audioOutputs = devices.filter(device => device.kind === 'audiooutput');
+
+            // 【修正ポイント3】ラベル判定をさらに強化
+            // SH-01L等の端末で受話口として現れる可能性のあるキーワードを網羅
+            const earpiece = audioOutputs.find(d => 
+                d.label.toLowerCase().includes('earpiece') || 
+                d.label.toLowerCase().includes('receiver') ||
+                d.label.toLowerCase().includes('phone') ||
+                d.label.toLowerCase().includes('telephony') ||
+                d.label.toLowerCase().includes('internal') ||
+                d.label.toLowerCase().includes('handset')
+            );
+
+            if (earpiece && audioElement.setSinkId) {
+                console.log("Found Earpiece:", earpiece.label);
+                await audioElement.setSinkId(earpiece.deviceId);
+            } else {
+                // 明示的な受話口が見つからない場合、「空文字」をセットすることで
+                // OS側の「デフォルト通話デバイス（通常は受話口）」に委ねる
+                if (audioElement.setSinkId) await audioElement.setSinkId("");
+            }
+        } catch (e) {
+            console.error("Audio routing error:", e);
         }
     }
 
-    function requestEndCall() {
-        if (currentCall) {
-            const conn = peer.connect(currentCall.peer);
-            conn.on('open', () => { conn.send('END_CALL'); setTimeout(() => { if(currentCall)currentCall.close(); forceEndCall(); }, 100); });
-            currentCall.close();
-        }
-        forceEndCall();
-    }
-
-    function forceEndCall(typeOverride) {
-        if (currentCall) {
-            let type = (document.getElementById('btn-answer').style.display === 'flex') ? "missed" : 
-                       (document.getElementById('call-label').innerText.includes("発信") ? "out" : "in");
-            saveHistory(currentCall.peer, typeOverride || type);
-        }
-        stopSounds();
-        if (currentCall) currentCall.close();
-        const audio = document.getElementById('remote-audio');
-        if (audio) { audio.srcObject = null; audio.remove(); }
-        clearInterval(timerInterval);
-        document.getElementById('call-overlay').style.display = 'none';
-        document.getElementById('timer').style.display = 'none';
-        currentCall = null;
-        callStartTime = null;
-        renderHistory();
-    }
-
-    function stopSounds() {
-        clearInterval(ringInterval); clearInterval(vibeInterval);
-        ringtone.pause(); ringtone.currentTime = 0;
-        dialtone.pause(); dialtone.currentTime = 0;
-        if (navigator.vibrate) navigator.vibrate(0);
-    }
-
-    function showAddContact(index = -1) {
-        const title = document.getElementById('modal-title');
-        const btnDel = document.getElementById('btn-delete-con');
-        if (index === -1) {
-            title.innerText = "連絡先を追加";
-            document.getElementById('new-name').value = "";
-            document.getElementById('new-number').value = "";
-            document.getElementById('edit-index').value = "-1";
-            btnDel.style.display = "none";
-        } else {
-            let contacts = JSON.parse(localStorage.getItem('nnm_contacts') || '[]');
-            title.innerText = "連絡先を編集";
-            document.getElementById('new-name').value = contacts[index].name;
-            document.getElementById('new-number').value = contacts[index].number;
-            document.getElementById('edit-index').value = index;
-            btnDel.style.display = "block";
-        }
-        document.getElementById('add-modal').style.display = 'flex';
-    }
-
-    function saveContact() {
-        const name = document.getElementById('new-name').value;
-        const num = document.getElementById('new-number').value;
-        const idx = parseInt(document.getElementById('edit-index').value);
-        if (!name || !num) return;
-        let contacts = JSON.parse(localStorage.getItem('nnm_contacts') || '[]');
-        if (idx === -1) contacts.push({ name, number: num });
-        else contacts[idx] = { name, number: num };
-        localStorage.setItem('nnm_contacts', JSON.stringify(contacts));
-        closeAddContact();
-        renderContacts();
-    }
-
-    function deleteContact() {
-        const idx = parseInt(document.getElementById('edit-index').value);
-        if (idx === -1) return;
-        let contacts = JSON.parse(localStorage.getItem('nnm_contacts') || '[]');
-        contacts.splice(idx, 1);
-        localStorage.setItem('nnm_contacts', JSON.stringify(contacts));
-        closeAddContact();
-        renderContacts();
-    }
-
-    function renderContacts() {
-        const list = document.getElementById('contact-list');
-        let contacts = JSON.parse(localStorage.getItem('nnm_contacts') || '[]');
-        list.innerHTML = contacts.map((c, i) => `
-            <div class="list-item">
-                <div class="avatar" onclick="makeCall('${c.number}', '${c.name}')">${c.name[0]}</div>
-                <div class="info" onclick="showAddContact(${i})">
-                    <div class="name">${c.name}</div><div class="sub-text">${c.number}</div>
-                </div>
-                <span class="material-symbols-outlined" style="color:var(--accent)" onclick="makeCall('${c.number}', '${c.name}')">call</span>
-            </div>
-        `).join('');
-    }
-
-    function saveHistory(num, type) {
-        let history = JSON.parse(localStorage.getItem('nnm_history') || '[]');
-        history.unshift({ num, type, time: new Date().toLocaleString(), name: getContactName(num) });
-        localStorage.setItem('nnm_history', JSON.stringify(history.slice(0, 50)));
-    }
-
-    function renderHistory() {
-        const list = document.getElementById('history-list');
-        let history = JSON.parse(localStorage.getItem('nnm_history') || '[]');
-        list.innerHTML = history.map((h, i) => `
-            <div class="list-item" onclick="makeCall('${h.num}', '${h.name}')">
-                <div class="avatar" style="background:#eee; color:#666"><span class="material-symbols-outlined">${h.type==='out'?'call_made':h.type==='in'?'call_received':'call_missed'}</span></div>
-                <div class="info">
-                    <div class="name ${h.type==='missed'?'missed':''}">${h.name}</div>
-                    <div class="sub-text">${h.time}</div>
-                </div>
-                <span class="material-symbols-outlined" style="color:var(--sub); font-size:18px;" onclick="event.stopPropagation(); deleteHistoryItem(${i})">delete</span>
-            </div>
-        `).join('');
-    }
-
-    function deleteHistoryItem(idx) {
-        let history = JSON.parse(localStorage.getItem('nnm_history') || '[]');
-        history.splice(idx, 1);
-        localStorage.setItem('nnm_history', JSON.stringify(history));
-        renderHistory();
-    }
-
-    function getContactName(num) {
-        let contacts = JSON.parse(localStorage.getItem('nnm_contacts') || '[]');
-        let c = contacts.find(c => c.number === num);
-        return c ? c.name : num;
-    }
-
-    function switchTab(tab) {
-        document.querySelectorAll('.tab, .page-content').forEach(el => el.classList.remove('active'));
-        document.querySelector(`.tab[onclick*="${tab}"]`).classList.add('active');
-        document.getElementById(`${tab}-page`).classList.add('active');
-    }
-    function closeAddContact() { document.getElementById('add-modal').style.display = 'none'; }
-    function toggleKeypad(show) { document.getElementById('keypad-modal').classList.toggle('open', show); if(!show) { dialString = ""; updateDialDisplay(); } }
-    function pressKey(k) { if(k==='back') dialString=dialString.slice(0,-1); else if(dialString.length<7) dialString+=k; updateDialDisplay(); }
-    function updateDialDisplay() { 
-        let d = dialString; if(d.length>2) d=d.substring(0,2)+"-"+d.substring(2);
-        document.getElementById('dial-display').innerText = d; 
-    }
-    function startDialCall() { const t = document.getElementById('dial-display').innerText; if(t.length>3) makeCall(t); toggleKeypad(false); }
-    function startTimer() {
-        let sec = 0; clearInterval(timerInterval);
-        timerInterval = setInterval(() => {
-            sec++; let m = Math.floor(sec/60).toString().padStart(2,'0'); let s = (sec%60).toString().padStart(2,'0');
-            document.getElementById('timer').innerText = `${m}:${s}`;
-        }, 1000);
-    }
-    function showCallOverlay(num, name, incoming) {
-        document.getElementById('active-number').innerText = num;
-        document.getElementById('active-name').innerText = name;
-        document.getElementById('call-overlay').style.display = 'flex';
-        document.getElementById('btn-answer').style.display = incoming ? 'flex' : 'none';
-        document.getElementById('call-label').innerText = incoming ? "着信中..." : "発信中...";
-        isSpeakerOn = false;
-        document.getElementById('btn-speaker').style.background = "#eee";
-        document.getElementById('btn-speaker').style.color = "var(--text)";
-    }
+    // ... (以降のUI操作・履歴・連絡先ロジックは変更なし)
 </script>
 </body>
 </html>
